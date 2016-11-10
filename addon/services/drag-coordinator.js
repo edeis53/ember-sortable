@@ -26,11 +26,6 @@ export default Ember.Service.extend({
       this.get('sortComponents')[sortingScope].removeObject(component);
     },
 
-    draggingOver(event, emberObject) {
-      const hasSameSortingScope = this.get('currentDragItem.sortingScope') === emberObject.get('sortingScope');
-      console.log(emberObject);
-    },
-
     coordinate(){
       //if there is an active drop group, otherwise the object is hovering over something we can't drop into.
       if(this.activeDropGroup)

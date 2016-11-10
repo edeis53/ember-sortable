@@ -101,9 +101,11 @@ export default Component.extend({
 
       if (!get(item, 'isDragging')) {
         set(item, direction, position);
+
       }
 
       // add additional spacing around active element
+      //eg. 'isBusy' = computed.or('isDragging', 'isDropping'),
       if (get(item, 'isBusy')) {
         position += get(item, 'spacing') * 2;
       }
