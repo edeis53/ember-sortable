@@ -1,0 +1,42 @@
+{{yield this}}
+
+{{#each model.children as |child|}}
+  {{#sortable-item tagName=tagName class=(sortable-class child model) parent=this model=child group=group handle=handle}}
+  <div class="ui raised segment">
+    Title: {{child.title}} <span class="handle">&varr;</span>
+  </div>
+  {{/sortable-item}}
+{{/each}}
+
+
+
+{{!--
+https://github.com/yapplabs/ember-modal-dialog/pull/152
+https://guides.emberjs.com/v2.9.0/components/block-params/
+
+
+
+
+Route template:
+```
+{{#foo as |fooComponent|}}
+    {{#bar parent=fooComponent}}
+
+    {{/bar}}
+{{/foo}}
+```
+How to access fooComponent from foo component’s template? eg.
+
+Route template:
+```
+{{#foo as |fooComponent|}} {{/foo}}
+```
+foo template:
+```
+{{#bar parent=fooComponent}}
+{{/bar}}
+```
+
+
+
+--}}

@@ -140,6 +140,22 @@ export default Component.extend({
     let sortedItems = this.get('sortedItems');
 
 
+    /******************
+
+      Insert logic.
+
+            re: sortedItems
+            let items = a(this.get('items'));
+
+                Get the target of the sorting. If it is root or if it is a child.
+
+                We can't use this._itemPosition, we'll have to get another one for the child.
+
+                Maybe sortable-item should be aware of where it is, and then grab a new _itemPosition of first element when it swaps into a new child/parent.
+                
+    *******************/
+
+
     /* Cached position of the first sortable-item in group.
           -This will be used as the first position of the sortable-item in the group, regardless of their order.
 
@@ -211,6 +227,16 @@ export default Component.extend({
     //get the original ember model assigned to sortable-group.
     //we don't manipulate this model directly, and send it back in the callback as is.
     let groupModel = this.get('model'); //model objects
+
+    /*******
+
+      Insert logic here.
+
+            Above sorts the entire model.
+
+                If we are sorting a child, add a few extra steps to sort that.
+
+    ********/
 
     let itemModels = items.mapBy('model'); //returns the model of each component, in sorted order.
     //http://emberjs.com/api/classes/Ember.Array.html#method_mapBy
