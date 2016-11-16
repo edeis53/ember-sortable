@@ -325,19 +325,28 @@ export default SortableGroupComponent.extend({
             --If the sortable-item is being dragged, Y position is: it's original this.element.offsetTop + or - the distance the mouse moved
             --Once this sorting command is run, the objects are in perfect order.
     **/
-    let sortedItems = this.get('sortedItems');
+    let sortedItems = this.get('sortedItems'); //includes sorting of children.
 
     let findDropTarget = this.findDropTarget();
 
-    console.log("dropTarget = "+findDropTarget);
 
-    //console.log(sortedItems);
     /******************
 
       Insert logic.
 
-            re: sortedItems
-            let items = a(this.get('items'));
+        TODO:
+            -Get sorting working within the folder first.
+            -Give each sortable-item/group it's own offsettop property for storing on init or first run.
+            -Get the API update call working with appropriate parent information.
+
+
+        Step #1 - Get the target of the sorting.
+
+        Step #2 - Find out how to reposition nested items.
+                      -Maybe we can do our recursive child loop trick.
+
+        3? - If drop target isn't root, then we should make the spacer inside the drop target.
+
 
                 Get the target of the sorting. If it is root or if it is a child.
 
@@ -348,7 +357,7 @@ export default SortableGroupComponent.extend({
     *******************/
 
 
-    /* Cached position of the first sortable-item in group.
+    /* Cached position of the first sortable-item in group. Value never changes.
           -This will be used as the first position of the sortable-item in the group, regardless of their order.
 
       Set during _startDrag() event that runs once when the user clicks and starts to move.
@@ -362,15 +371,65 @@ export default SortableGroupComponent.extend({
       position = this.get('itemPosition');
     }
 
+    console.log("root position = "+position);
+
     /*
      * Position of the dragged item is updated prior to this. It is relative to the actual position in the dom.
      * So if you drag it to the top, it will be the first item, or second etc.
      */
-    sortedItems.forEach(item => {
-      position = this.updateEachSortItem(item, position);
-    });
+     this.coordinateRecursiveUpdate(sortedItems, position);
+
   },
 
+
+  coordinateRecursiveUpdate(sortedItems, position) {
+
+    var i = 0; //for test
+    sortedItems.forEach(item => {
+      position = this.updateEachSortItem(item, position);
+
+      //for test
+      if(item.get('parent') && i == 0)
+      {
+        //console.log("setting "+item.elementId+" y pos="+position);
+        i++;
+      }
+      //console.log("updating position for: "+item.get('elementId'));
+
+      //if this item has children (recursive)
+      if(item.get('children') && item.get('children').length > 0)
+      {
+        //sort the children by y position.
+
+
+        //Get the offset top position of the first element. Taken from this.get('itemPosition').
+
+        var childPosition = item._childPosition;
+
+        // Initialize this position on the first run.
+        if (childPosition === null) {
+          //returns x or y
+          let direction = this.get('direction');
+
+          /*
+            sortedItems is an Ember array.
+                - get the "y" property of the first sortable-item component. "y" was set during the sortable-item drag event.
+                - spacing is ZERO by default. "Additional spacing between active item and the rest of the elements."
+                - we'll just ignore the spacing property for now, because it doesn't quite work so well.
+          */
+          childPosition = item.get(`children.firstObject.${direction}`) - item.get('children.firstObject.spacing');
+
+          //save to the component private variable.
+          set(item, '_childPosition', childPosition);
+        }
+
+        //recursive children
+        this.coordinateRecursiveUpdate(item.get('children'), childPosition);
+      }
+
+    });
+
+  },
 
   updateEachSortItem(item, position) {
     let dimension;
@@ -380,7 +439,6 @@ export default SortableGroupComponent.extend({
     //if it is the very first element, then it's position is the same. We just grabbed the position of the first element above with position = this.get('itemPosition');
     if (!get(item, 'isDragging')) {
       set(item, direction, position);
-
     }
 
     // add additional spacing around active element

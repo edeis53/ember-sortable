@@ -26,6 +26,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
     pendingDropTarget: false,
     activeDropTarget: false,
 
+    //cached position of the first element in a folder.
+    _childPosition: null,
+
     /**
        007: Receives ONCE: mouseMove event after the user clicks and starts to move.
               -This function runs only ONCE as well.
