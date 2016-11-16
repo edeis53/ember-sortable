@@ -371,8 +371,6 @@ export default SortableGroupComponent.extend({
       position = this.get('itemPosition');
     }
 
-    console.log("root position = "+position);
-
     /*
      * Position of the dragged item is updated prior to this. It is relative to the actual position in the dom.
      * So if you drag it to the top, it will be the first item, or second etc.
@@ -464,6 +462,165 @@ export default SortableGroupComponent.extend({
                 -sortable-item has a height() computer property.
      **/
     return position += get(item, dimension);
+  },
+
+
+  //search for the dropped item
+  findDroppedItem(items) {
+    var droppedItem;
+
+    if(items.findBy('wasDropped', true))
+    {
+      return items.findBy('wasDropped', true);
+    }
+
+    items.forEach(item => {
+
+      //if this item has children (recursive)
+      if(item.get('children') && item.get('children').length > 0)
+      {
+        //recursive children
+        droppedItem = this.findDroppedItem(item.get('children'));
+      }
+
+      if(droppedItem !== false)
+      {
+        //we found the dropped item. break the forEach loop
+        return;
+      }
+    });
+
+    return droppedItem;
+  },
+
+
+
+  mapChildrenModels(children){
+
+      var models = children.mapBy('model');
+
+      children.forEach((childComponent, index) => {
+
+        //if this component has children
+        if(childComponent.get('children') && childComponent.get('children').length > 0)
+        {
+          //recursive children
+          //map the children models for this item
+          models[index].set('children', this.mapChildrenModels(childComponent.get('children')));
+        }
+
+      });
+
+      return models;
+  },
+
+
+  recursiveInvoke(items, command){
+
+    console.log("invoke");
+    items.invoke(command);
+
+    items.forEach(item => {
+
+      //if this item has children (recursive)
+      if(item.get('children') && item.get('children').length > 0)
+      {
+        //recursive children
+        this.recursiveInvoke(item.get('children'), command);
+      }
+    });
+
+  },
+
+  /**
+    @method commit
+  */
+  /**
+    019:   Commit the dropped item.
+              Sort is already complete by "update" above.
+   **/
+  commit() {
+    //get the list of sorted sortable-item components.
+    let items = this.get('sortedItems'); //component classes, sorted in the new order.
+
+    //get the original ember model assigned to sortable-group.
+    //we don't manipulate this model directly, and send it back in the callback as is.
+    let groupModel = this.get('model'); //model objects
+
+    /*******
+
+      Insert logic here.
+
+            Above sorts the entire model.
+
+                If we are sorting a child, add a few extra steps to sort that.
+
+    ********/
+
+    let itemModels = items.mapBy('model'); //returns the model of each component, in sorted order.
+    //http://emberjs.com/api/classes/Ember.Array.html#method_mapBy
+
+    //recursively map the children models.
+    items.forEach((component, index) => {
+      if(component.get('children') && component.get('children').length > 0)
+      {
+        //map the children models for this item
+        itemModels[index].set('children', this.mapChildrenModels(component.get('children')));
+      }
+    });
+
+    //grab the sortable-item component class that was dropped
+    let draggedItem = this.findDroppedItem(items);
+    let draggedModel;
+
+    //can we find the item that was dropped?
+    if (draggedItem) {
+      //reset the sortable-item component
+      set(draggedItem, 'wasDropped', false); // Reset
+      //grab the model of the sortable-item for the onChange callback.
+      draggedModel = get(draggedItem, 'model');
+    }
+
+    //delete cache the original position of the first sortable-item within the group
+    //this is set during _startDrag(event) in sortable-item component. drag is complete, we don't need it anymore.
+    delete this._itemPosition;
+
+    //ED TODO:: Delete all of the sortable-items childPosition caches.
+
+    /**
+      020: Run some functions on each sortable-item components
+      http://emberjs.com/api/classes/Ember.Array.html#method_invoke
+        Invokes the named method on every object in the receiver that implements it.
+    **/
+
+
+    //run sortable-item.freeze();
+    //set css transition to none.
+    run.schedule('render', () => {
+      this.recursiveInvoke(items, 'freeze');
+      //items.invoke('freeze');
+    });
+
+    //delete this._y of sortable-item. It needs to init new y position on the next startDrag, as everything has moved.
+    //removes transform.
+    run.schedule('afterRender', () => {
+      this.recursiveInvoke(items, 'reset');
+      //items.invoke('reset');
+    });
+
+    //removes transform again.
+    run.next(() => {
+      run.schedule('render', () => {
+        this.recursiveInvoke(items, 'thaw');
+        //items.invoke('thaw');
+      });
+    });
+
+    if (groupModel !== NO_MODEL) {
+      invokeAction(this, 'onChange', groupModel, itemModels, draggedModel);
+    } else {
+      invokeAction(this, 'onChange', itemModels, draggedModel);
+    }
   }
 
 

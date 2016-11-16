@@ -152,7 +152,7 @@ export default Component.extend({
                 We can't use this._itemPosition, we'll have to get another one for the child.
 
                 Maybe sortable-item should be aware of where it is, and then grab a new _itemPosition of first element when it swaps into a new child/parent.
-                
+
     *******************/
 
 
