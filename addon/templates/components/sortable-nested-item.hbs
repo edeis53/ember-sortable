@@ -1,11 +1,11 @@
 {{yield this}}
 
 {{#each model.children as |child|}}
-  {{#sortable-item tagName=tagName class=(sortable-class child model) parent=this model=child group=group handle=handle}}
+  {{#sortable-nested-item tagName=tagName class=(sortable-class child model) parent=this model=child group=group handle=handle}}
   <div class="ui raised segment">
     Title: {{child.title}} <span class="handle">&varr;</span>
   </div>
-  {{/sortable-item}}
+  {{/sortable-nested-item}}
 {{/each}}
 
 
