@@ -82,7 +82,11 @@ export default SortableGroupComponent.extend({
     {
       //find the parent in the list of items
       let parent = this.get('items').findBy('elementId', item.parent.elementId);
-      parent.get('children').removeObject(item);
+
+      if(parent && parent.get('children') && parent.get('children') > 0)
+      {
+        parent.get('children').removeObject(item);
+      }
     } else {
         this.get('items').removeObject(item);
     }
@@ -517,7 +521,6 @@ export default SortableGroupComponent.extend({
 
   recursiveInvoke(items, command){
 
-    console.log("invoke");
     items.invoke(command);
 
     items.forEach(item => {
@@ -529,6 +532,24 @@ export default SortableGroupComponent.extend({
         this.recursiveInvoke(item.get('children'), command);
       }
     });
+
+  },
+
+
+  deleteChildPositions(items){
+
+    items.forEach(item => {
+      //clear the position
+      set(item, '_childPosition', null);
+
+      //if this item has children (recursive)
+      if(item.get('children') && item.get('children').length > 0)
+      {
+        //recursive children
+        this.deleteChildPositions(item.get('children'));
+      }
+    });
+
 
   },
 
@@ -584,6 +605,8 @@ export default SortableGroupComponent.extend({
     //delete cache the original position of the first sortable-item within the group
     //this is set during _startDrag(event) in sortable-item component. drag is complete, we don't need it anymore.
     delete this._itemPosition;
+    this.deleteChildPositions(items); //recursive delete cached positions of childs.
+
 
     //ED TODO:: Delete all of the sortable-items childPosition caches.
 
@@ -598,26 +621,23 @@ export default SortableGroupComponent.extend({
     //set css transition to none.
     run.schedule('render', () => {
       this.recursiveInvoke(items, 'freeze');
-      //items.invoke('freeze');
     });
 
     //delete this._y of sortable-item. It needs to init new y position on the next startDrag, as everything has moved.
     //removes transform.
     run.schedule('afterRender', () => {
       this.recursiveInvoke(items, 'reset');
-      //items.invoke('reset');
     });
 
     //removes transform again.
     run.next(() => {
       run.schedule('render', () => {
         this.recursiveInvoke(items, 'thaw');
-        //items.invoke('thaw');
       });
     });
 
     if (groupModel !== NO_MODEL) {
-      invokeAction(this, 'onChange', groupModel, itemModels, draggedModel);
+      invokeAction(this, 'onChange', groupModel, itemModels, draggedModel, draggedItem); //add the draggedItem Component
     } else {
       invokeAction(this, 'onChange', itemModels, draggedModel);
     }
