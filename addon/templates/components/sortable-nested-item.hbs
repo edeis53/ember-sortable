@@ -1,10 +1,21 @@
 {{yield this}}
 
+{{!--
+
+    Bug NOTE:: tagName must be defined as "div" here, you can't reference the parent because the children get rendered first.
+
+    eg. tagName="div"
+
+    Error from using tagName=tagName or tagName=this.tagName::
+        ember.debug.js:3012 Uncaught DOMException: Failed to execute 'createElement' on 'Document': The tag name provided ('[object Object]') is not a valid name.(…)
+
+   Solution: set the TagName property in the component itself instead of the view.
+--}}
+
 {{#each model.children as |child|}}
-  {{#sortable-nested-item tagName=tagName class=(sortable-class child model) parent=this model=child group=group handle=handle}}
-  <div class="ui raised segment">
+  {{#sortable-nested-item class=class parent=this model=child group=group handle=handle as |EmberComponentItem|}}
     Title: {{child.title}} <span class="handle">&varr;</span>
-  </div>
+    Tagname: {{this.tagName}}
   {{/sortable-nested-item}}
 {{/each}}
 
