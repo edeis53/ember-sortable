@@ -635,17 +635,12 @@ items.forEach((component, index) => {
 
       let models = children.mapBy('model');
 
-      console.log(models);
-
       children.forEach((childComponent, index) => {
-        console.log("index = "+index);
         //if this component has children
         if(childComponent.get('children') && childComponent.get('children').length > 0)
         {
-          console.log("index again = "+index);
           //recursive children
           //map the children models for this item
-          console.log("starting recursiion");
           this.mapChildrenModels(childComponent.get('children'));
           models[index].set('children', this.mapChildrenModels(childComponent.get('children')));
         }
@@ -710,13 +705,13 @@ items.forEach((component, index) => {
     {
       //if the dragged components parent element, is not the same as the drop target then we need to move this object to a different depth.
       swapDropTarget = true;
-      console.log("need to swap drop target");
     }
 
 
     if(swapDropTarget == true)
     {
-      this.swap(dropTarget);
+      //console.log("swapping drop target");
+      //this.swap(dropTarget);
     }
 
 
