@@ -594,7 +594,7 @@ COPY:
 
   //search for the dropped item
   findDroppedItem(items) {
-    var droppedItem;
+    var droppedItem = false;
 
     if(items.findBy('wasDropped', true))
     {
@@ -607,13 +607,14 @@ COPY:
       if(item.get('children') && item.get('children').length > 0)
       {
         //recursive children
-        droppedItem = this.findDroppedItem(item.get('children'));
-      }
+        var search = this.findDroppedItem(item.get('children'));
 
-      if(droppedItem !== false)
-      {
-        //we found the dropped item. break the forEach loop
-        return;
+        if(search !== false && search !== undefined)
+        {
+          //we found the dropped item.
+          droppedItem = search;
+
+        }
       }
     });
 
@@ -712,6 +713,20 @@ items.forEach((component, index) => {
     {
       //console.log("swapping drop target");
       //this.swap(dropTarget);
+
+
+      /*  TO DO
+       *
+       *  We need to send an accurate itemModels back to the route. Need to ensure the children of the last position are updated.
+       *     -Delete the item from previous node. Either root, or children. ***Maybe we only need to do it on children level.***
+       *     -Maybe the child component is still listed under the parent component, may have nothing to do with model.
+       *
+       *  Maybe we can update the sort-item drag to operate on different levels. It should detect what element it is inside and then
+       *  insert the ghost element/push the others out of the way.
+       *
+       *  Turn on model refreshing later.
+       *
+       */
     }
 
 
@@ -721,6 +736,7 @@ items.forEach((component, index) => {
     //get the list of sorted sortable-item components.
     let items = this.get('sortedItems'); //component classes, sorted in the new order.
 
+    console.log(items.toArray());
     //get the original ember model assigned to sortable-group.
     //we don't manipulate this model directly, and send it back in the callback as is.
     let groupModel = this.get('model'); //model objects
@@ -749,6 +765,8 @@ items.forEach((component, index) => {
 
     //grab the sortable-item component class that was dropped
     let draggedItem = this.findDroppedItem(items);
+
+    console.log("did we find the dragedItem??=="+draggedItem);
     let draggedModel;
 
     //can we find the item that was dropped?
