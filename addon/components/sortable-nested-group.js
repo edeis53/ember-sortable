@@ -9,6 +9,11 @@ const NO_MODEL = {};
 
 import SortableGroupComponent from './sortable-group';
 
+/*
+ * Note: debugger; will stop ember execution for debugging.
+ *
+ */
+
 export default SortableGroupComponent.extend({
   layout,
 
@@ -38,6 +43,12 @@ export default SortableGroupComponent.extend({
   //array of active drop targets
   activeDropTargets: computed(() => a()),
 
+  currentlyDraggedComponent: null, //what component are we currently dragging?
+
+  setCurrentlyDraggedComponent(component){
+    this.set('currentlyDraggedComponent', component);
+  },
+
   /**
     Register an item with this group.
     @method registerItem
@@ -47,29 +58,47 @@ export default SortableGroupComponent.extend({
      001:  Runs during didInsertElement() in sortable-item
    **/
   registerItem(item) {
-    if(item.parent)
-    {
-      //find the parent in the list of items
-      let parent = this.get('items').findBy('elementId', item.parent.elementId);
-      //since the nested child components get rendered before their parents, they may return undefined
-      if(parent === undefined)
+        //we only need to add the root level items.
+        //we will registered the children as chilren of the componets in didInsertElement with registerChildren below
+        if(item.parent === null)
+        {
+          //this item doesn't have any parents.
+          //check and see if it has already been added
+          if(this.get('items').findBy('elementId', item.elementId) === undefined)
+          {
+            //console.log("inserted "+item.elementId+"into root");
+            this.get('items').addObject(item);
+          } else {
+            //item already exists
+            //console.log(item.elementId+" already exists");
+          }
+        }
+    },
+
+    registerChildren(item){
+      /* Note:
+            http://stackoverflow.com/a/18843648
+            It's important to understand what the = operator in JavaScript does and does not do.
+
+            The = operator does not make a copy of the data.
+
+            The = operator creates a new reference to the same data.
+      */
+      if(item.parent !== null)
       {
-        //if that's the case, we need to add the parent, as well as this child element.
         item.parent.get('children').addObject(item);
-        this.get('items').addObject(item.parent);
-      } else {
-        //the parent already exists, just add the child
-        parent.get('children').addObject(item);
       }
-    } else {
-      //this item doesn't have any parents.
-      //check and see if it has already been added
-      if(this.get('items').findBy('elementId', item.elementId) === undefined)
-      {
-        this.get('items').addObject(item);
-      }
-    }
-  },
+    },
+
+/*
+    console.log("start register completion");
+    this.get('items').forEach(item => {
+        if(item.get('children')){
+              item.get('children').forEach(child => {
+                console.log(item.elementId+child);
+              });
+        }
+    });*/
 
   /**
     De-register an item with this group.
@@ -78,12 +107,18 @@ export default SortableGroupComponent.extend({
   */
   deregisterItem(item) {
 
-    if(item.parent)
+    /*
+     * Note:: We don't need to do recursion here, because "item.parent" is a reference to the actual component.
+     * It is working list an alias. We can remove the object directly.
+     *
+     */
+
+    if(item.parent !== null)
     {
       //find the parent in the list of items
-      let parent = this.get('items').findBy('elementId', item.parent.elementId);
+      let parent = item.parent;
 
-      if(parent && parent.get('children') && parent.get('children') > 0)
+      if(parent && (parent.get('children') && parent.get('children').length > 0))
       {
         parent.get('children').removeObject(item);
       }
@@ -94,6 +129,28 @@ export default SortableGroupComponent.extend({
   },
 
 
+/*
+  recursiveFindParent(component, items){
+
+     var parent = items.findBy('elementId', component.parent.elementId);
+
+     //if the parent hasn't been found already, let's check the children.
+     if(!parent)
+     {
+       items.forEach(item => {
+            parent = recursiveFindParent(component, item.get('children'));
+
+            if(droppedItem !== false)
+            {
+              //we found the dropped item. break the forEach loop
+              return;
+            }
+       });
+     }
+
+     return parent;
+  }
+*/
 
   /**
     009.1: cache the original position of the first sortable-item within the group to a private variable the sortable-group for reference: sortable-group.this._itemPosition
@@ -311,6 +368,63 @@ export default SortableGroupComponent.extend({
     return this.activeDropTargetComponent;
   },
 
+
+  swap(dropTarget) {
+    //remove the currently dragged component from the group's 'items' list
+    //also removes the component from the parent's children list.
+    this.deregisterItem(this.currentlyDraggedComponent);
+    //IMPORTANT:: Looks like we can't delete the child model from a component, because it's that model that was used to generate the component itself! You'll end up deleting the component in the process.
+
+
+
+    //set the parent for the currentlyDraggedComponent to its drop target
+    //evaluate if the drop target is the root element (sortable-nested-group)
+    if(this === dropTarget)
+    {
+      //if the target is root, the the component has no parent.
+      set(this.currentlyDraggedComponent, 'parent', null);
+    } else {
+      //set the parent to the drop area target component
+      set(this.currentlyDraggedComponent, 'parent', dropTarget);
+    }
+
+
+    //now register the dragged component back to this.'items'
+    //this will also update the appropriate parent component with this item as its child.
+    this.registerItem(this.currentlyDraggedComponent);
+    this.registerChildren(this.currentlyDraggedComponent);
+
+
+    //move the draggedComponent to its correct location in the dom
+    //$('#'+this.currentlyDraggedComponent.get('elementId')).detach().appendTo('#'+dropTarget.get('elementId'));
+
+
+    //maybe now I need to reset the offset.top! or
+
+
+            //Testing: Shows the new component items tree.
+            /*
+                this.get('items').forEach(item => {
+                  console.log(item.elementId);
+                  console.log(item.model);
+                    if(item.get('children')){
+                          item.get('children').forEach(child => {
+                            console.log(item.elementId+child.elementId);
+                            console.log(child.model);
+                              if(child.get('children')){
+                                    child.get('children').forEach(child2 => {
+                                      console.log(child2.model);
+                                    });
+                              }
+
+                          });
+                    }
+                });*/
+
+
+
+  },
+
   /**
     014: Update the group.
           --Called on each mouse move and during drop event.
@@ -320,23 +434,19 @@ export default SortableGroupComponent.extend({
 
   **/
   update() {
-     /**
-        !!!!! Important !!!!
-        014.5: Sort the sortable-items within the sortable-group based on their Y position.
-            --these were added to the list during the "registerItem" event, called during didInsertElement in the sortable-item
 
-            --The sortable-item Y position is computed as this.element.offsetTop by default.
-            --If the sortable-item is being dragged, Y position is: it's original this.element.offsetTop + or - the distance the mouse moved
-            --Once this sorting command is run, the objects are in perfect order.
-    **/
-    let sortedItems = this.get('sortedItems'); //includes sorting of children.
-
-    let findDropTarget = this.findDropTarget();
 
 
     /******************
 
       Insert logic.
+
+
+        MOVE ELEMENT JQUERY STYLE:
+        http://stackoverflow.com/a/19802593
+
+        jQuery("#NodesToMove").detach().appendTo('#DestinationContainerNode')
+COPY:
 
         TODO:
             -Get sorting working within the folder first.
@@ -359,6 +469,19 @@ export default SortableGroupComponent.extend({
                 Maybe sortable-item should be aware of where it is, and then grab a new _itemPosition of first element when it swaps into a new child/parent.
 
     *******************/
+
+
+
+    /**
+         !!!!! Important !!!!
+         014.5: Sort the sortable-items within the sortable-group based on their Y position.
+             --these were added to the list during the "registerItem" event, called during didInsertElement in the sortable-item
+
+             --The sortable-item Y position is computed as this.element.offsetTop by default.
+             --If the sortable-item is being dragged, Y position is: it's original this.element.offsetTop + or - the distance the mouse moved
+             --Once this sorting command is run, the objects are in perfect order.
+     **/
+     let sortedItems = this.get('sortedItems'); //includes sorting of children.
 
 
     /* Cached position of the first sortable-item in group. Value never changes.
@@ -498,18 +621,32 @@ export default SortableGroupComponent.extend({
   },
 
 
+/*
+items.forEach((component, index) => {
+  if(component.get('children') && component.get('children').length > 0)
+  {
+    //map the children models for this item
+    itemModels[index].set('children', this.mapChildrenModels(component.get('children')));
+  }
+});
+*/
 
   mapChildrenModels(children){
 
-      var models = children.mapBy('model');
+      let models = children.mapBy('model');
+
+      console.log(models);
 
       children.forEach((childComponent, index) => {
-
+        console.log("index = "+index);
         //if this component has children
         if(childComponent.get('children') && childComponent.get('children').length > 0)
         {
+          console.log("index again = "+index);
           //recursive children
           //map the children models for this item
+          console.log("starting recursiion");
+          this.mapChildrenModels(childComponent.get('children'));
           models[index].set('children', this.mapChildrenModels(childComponent.get('children')));
         }
 
@@ -561,6 +698,31 @@ export default SortableGroupComponent.extend({
               Sort is already complete by "update" above.
    **/
   commit() {
+    let dropTarget = this.findDropTarget();
+
+    //get the parent component of the currently dragged item. If there is no parentId, then it is root and the sortable-group is the parent.
+    let draggedComponentParent = ( this.currentlyDraggedComponent.get('parent') !== null ? this.currentlyDraggedComponent.get('parent') : this);
+
+    let swapDropTarget = false;
+
+    //dropTarget can be undefined if we are dragging out of bounds. Must check or we error.
+    if(dropTarget && (draggedComponentParent.get('elementId') !== dropTarget.get('elementId')))
+    {
+      //if the dragged components parent element, is not the same as the drop target then we need to move this object to a different depth.
+      swapDropTarget = true;
+      console.log("need to swap drop target");
+    }
+
+
+    if(swapDropTarget == true)
+    {
+      this.swap(dropTarget);
+    }
+
+
+
+
+
     //get the list of sorted sortable-item components.
     let items = this.get('sortedItems'); //component classes, sorted in the new order.
 

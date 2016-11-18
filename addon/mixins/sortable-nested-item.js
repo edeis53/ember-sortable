@@ -29,6 +29,81 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //cached position of the first element in a folder.
     _childPosition: null,
 
+
+    /**
+      @method didInsertElement
+    */
+    didInsertElement() {
+      /**
+         001:  Registers this item with the sortable-group. Which sortable-group we talk to is defined by the GROUP property of this sortable-item.
+       **/
+
+      //this._super(); //don't need the extended one firing.
+
+      // scheduled to prevent deprecation warning:
+      // "never change properties on components, services or models during didInsertElement because it causes significant performance degradation"
+      run.schedule("afterRender", this, "_tellGroup", "registerItem", this);
+
+      run.schedule("afterRender", this, "_tellGroup", "registerChildren", this); //register children with parent.
+
+    },
+
+    /**
+      @method _startDrag
+      @private
+    */
+
+    /**
+       005: The user is clicking on the handle, with mousedown, and is now moving their mouse.
+              -This funciton runs once.
+     **/
+    _startDrag(event) {
+      //if we are already dragging or are in the process of dropping, then exit. This doesn't need to be called again.
+      if (this.get('isBusy')) { return; }
+
+
+      /**
+         006: Pass the mouseMove event to makeDragHandler.
+                --Returns an event that calls the _drag function with new position of the sortable element (it's origin +/- mouseMove distance)
+       **/
+      let drag = this._makeDragHandler(event);
+
+
+      //Create the DROP function, which removes the listeners and calls _drop
+      let drop = () => {
+        $(window)
+          .off('mousemove touchmove', drag)
+          .off('click mouseup touchend', drop);
+
+        this._drop();
+      };
+
+      /**
+        009: Call the _drag function with new position of the sortable element (it's origin +/- mouseMove distance)
+      **/
+      $(window)
+        .on('mousemove touchmove', drag)
+        .on('click mouseup touchend', drop);
+
+
+      /**
+        009.1: cache the original position of the first sortable-item within the group to a private variable the sortable-group for reference: sortable-group.this._itemPosition
+      **/
+      this._tellGroup('prepare');
+
+      //tell the group what is the currently dragged component
+      this._tellGroup('setCurrentlyDraggedComponent', this);//ED
+
+      this.set('isDragging', true);
+      invokeAction(this, 'onDragStart', this.get('model'));
+
+      //Handle for autoscrolling
+      //DISABLED
+      //this._scrollOnEdges(drag);
+    },
+
+
+
     /**
        007: Receives ONCE: mouseMove event after the user clicks and starts to move.
               -This function runs only ONCE as well.
