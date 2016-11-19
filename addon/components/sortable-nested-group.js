@@ -265,10 +265,14 @@ export default SortableGroupComponent.extend({
      let x = this.get('currentMousePosition').x,
      y = this.get('currentMousePosition').y;
 
-     if (!get(component, 'isBusy')) {
+     //reset
+     var item = '#' + component.get('elementId');
+     set(component, 'pendingDropTarget', false);
+     set(component, 'activeDropTarget', false);
+     $(item).removeClass('sortable-activeDropTarget');
+     this.activeDropTargets.removeObject(component);
 
-           let item = '#' + component.get('elementId');
-
+     if (!get(component, 'isBusy') && !get(component, 'wasDropped')) {
            //http://stackoverflow.com/questions/12396635/crossing-over-to-new-elements-during-touchmove
            //If the dragged object is within bounds on the component, the add a class that it is a valid drop target.
            if (!(
@@ -369,61 +373,6 @@ export default SortableGroupComponent.extend({
   },
 
 
-  swap(dropTarget) {
-    //remove the currently dragged component from the group's 'items' list
-    //also removes the component from the parent's children list.
-    this.deregisterItem(this.currentlyDraggedComponent);
-    //IMPORTANT:: Looks like we can't delete the child model from a component, because it's that model that was used to generate the component itself! You'll end up deleting the component in the process.
-
-
-
-    //set the parent for the currentlyDraggedComponent to its drop target
-    //evaluate if the drop target is the root element (sortable-nested-group)
-    if(this === dropTarget)
-    {
-      //if the target is root, the the component has no parent.
-      set(this.currentlyDraggedComponent, 'parent', null);
-    } else {
-      //set the parent to the drop area target component
-      set(this.currentlyDraggedComponent, 'parent', dropTarget);
-    }
-
-
-    //now register the dragged component back to this.'items'
-    //this will also update the appropriate parent component with this item as its child.
-    this.registerItem(this.currentlyDraggedComponent);
-    this.registerChildren(this.currentlyDraggedComponent);
-
-
-    //move the draggedComponent to its correct location in the dom
-    //$('#'+this.currentlyDraggedComponent.get('elementId')).detach().appendTo('#'+dropTarget.get('elementId'));
-
-
-    //maybe now I need to reset the offset.top! or
-
-
-            //Testing: Shows the new component items tree.
-            /*
-                this.get('items').forEach(item => {
-                  console.log(item.elementId);
-                  console.log(item.model);
-                    if(item.get('children')){
-                          item.get('children').forEach(child => {
-                            console.log(item.elementId+child.elementId);
-                            console.log(child.model);
-                              if(child.get('children')){
-                                    child.get('children').forEach(child2 => {
-                                      console.log(child2.model);
-                                    });
-                              }
-
-                          });
-                    }
-                });*/
-
-
-
-  },
 
   /**
     014: Update the group.
@@ -686,6 +635,110 @@ items.forEach((component, index) => {
 
   },
 
+  //remove the component's model from the parent's children model
+  deleteChildModel(component){
+    let parentChildren = component.get('parent.model.children');
+    let componentModel = component.get('model');
+
+    //if the dragged component was a child of a parent model
+    if(parentChildren)
+    {
+      parentChildren.removeObject(componentModel);
+    }
+
+  },
+
+  addChildModel(component){
+    let parentModel = component.get('parent.model');
+    let componentModel = component.get('model');
+
+    if(parentModel)
+    {
+      console.log("parent children before>");
+      parentModel.get("children").forEach(child => {
+        console.log(child.id);
+      });
+
+      //add the model to the parent's children. Shouldn't matter if it is empty, because we are adding.
+      //when children is empty it's just an empty array.
+      if(parentModel.get("children"))
+      {
+        parentModel.get("children").addObject(componentModel);
+      }
+
+      console.log("parent children after>");
+      parentModel.get("children").forEach(child => {
+        console.log(child.id);
+      });
+    } else {
+      console.log("this component has no parent!");
+    }
+
+
+  },
+
+  swap(dropTarget) {
+      //remove the currently dragged component from the group's 'items' list
+      //also removes the component from the parent's children list.
+      this.deregisterItem(this.currentlyDraggedComponent);
+      //IMPORTANT:: Looks like we can't delete the child model from a component, because it's that model that was used to generate the component itself! You'll end up deleting the component in the process.
+
+      //YES, ON DRAG or UPDATE that may be the case, but we can delete the model on COMMIT (DROP)!!!
+      //try deleting the model from parent's model.children.
+      this.deleteChildModel(this.currentlyDraggedComponent);
+
+
+
+      //set the parent for the currentlyDraggedComponent to its drop target
+      //evaluate if the drop target is the root element (sortable-nested-group)
+      if(this === dropTarget)
+      {
+        //if the target is root, the the component has no parent.
+        set(this.currentlyDraggedComponent, 'parent', null);
+      } else {
+        //set the parent to the drop area target component
+        set(this.currentlyDraggedComponent, 'parent', dropTarget);
+      }
+
+
+      //now register the dragged component back to this.'items'
+      //this will also update the appropriate parent component with this item as its child.
+      this.registerItem(this.currentlyDraggedComponent);
+      this.registerChildren(this.currentlyDraggedComponent);
+
+      //add the model to parent model if applicable
+      this.addChildModel(this.currentlyDraggedComponent);
+
+      //move the draggedComponent to its correct location in the dom
+      //$('#'+this.currentlyDraggedComponent.get('elementId')).detach().appendTo('#'+dropTarget.get('elementId'));
+
+
+      //maybe now I need to reset the offset.top! or
+
+
+              //Testing: Shows the new component items tree.
+              /*
+                  this.get('items').forEach(item => {
+                    console.log(item.elementId);
+                    console.log(item.model);
+                      if(item.get('children')){
+                            item.get('children').forEach(child => {
+                              console.log(item.elementId+child.elementId);
+                              console.log(child.model);
+                                if(child.get('children')){
+                                      child.get('children').forEach(child2 => {
+                                        console.log(child2.model);
+                                      });
+                                }
+
+                            });
+                      }
+                  });*/
+
+
+
+    },
+
   /**
     @method commit
   */
@@ -711,8 +764,7 @@ items.forEach((component, index) => {
 
     if(swapDropTarget == true)
     {
-      //console.log("swapping drop target");
-      //this.swap(dropTarget);
+      this.swap(dropTarget);
 
 
       /*  TO DO
