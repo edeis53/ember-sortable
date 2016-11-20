@@ -46,10 +46,15 @@ export default SortableGroupComponent.extend({
   currentlyDraggedComponent: null, //what component are we currently dragging?
   currentlyDraggedModel: null, //save the model because the component id will update after rendering.
 
+  currentlyDropping: false, //current state of the group.
 
   setCurrentlyDraggedComponent(component){
     this.set('currentlyDraggedComponent', component);
     this.set('currentlyDraggedModel', component.get('model'));
+  },
+
+  setCurrentlyDropping(boolean){
+    this.set('currentlyDropping', boolean);
   },
 
   /**
@@ -422,6 +427,12 @@ COPY:
 
     *******************/
 
+    this.swapIfNecessary();
+    //if we swapped on the drop, the original draggd component no longer exists. We have a new one, as it was created in the dom by template loop.
+    //as soon as we add/remove the model from the components, we've triggered the cascade update.
+    //we should be tracking the dragged model and searching for that.
+    //during DROP update is run, then COMMIT is schedule under run next.
+    //so currently we have the dragged component, but whe commit is run, it's gone.
 
 
     /**
@@ -548,9 +559,10 @@ COPY:
   findDroppedItem(items) {
     var droppedItem = false;
 
-    if(items.findBy('wasDropped', true))
+    //find the component (new) which has the model we dragged.
+    if(items.findBy('model.id', this.currentlyDraggedModel.id))
     {
-      return items.findBy('wasDropped', true);
+      return items.findBy('model.id', this.currentlyDraggedModel.id);
     }
 
     items.forEach(item => {
@@ -565,7 +577,7 @@ COPY:
         {
           //we found the dropped item.
           droppedItem = search;
-
+          console.log("We found the dropped item = "+search);
         }
       }
     });
@@ -627,9 +639,12 @@ items.forEach((component, index) => {
       //clear the position
       set(item, '_childPosition', null);
 
+      console.log("deleteing postion for "+item.get('elementId'));
+
       //if this item has children (recursive)
       if(item.get('children') && item.get('children.length') > 0)
       {
+        console.log("doing recursion");
         //recursive children
         this.deleteChildPositions(item.get('children'));
       }
@@ -657,10 +672,6 @@ items.forEach((component, index) => {
 
     if(parentModel)
     {
-      console.log("parent children before>");
-      parentModel.get("children").forEach(child => {
-        console.log(child.id);
-      });
 
       //add the model to the parent's children. Shouldn't matter if it is empty, because we are adding.
       //when children is empty it's just an empty array.
@@ -669,14 +680,124 @@ items.forEach((component, index) => {
         parentModel.get("children").addObject(componentModel);
       }
 
+/*
       console.log("parent children after>");
       parentModel.get("children").forEach(child => {
         console.log(child.id);
       });
+      */
     } else {
-      console.log("this component has no parent!");
+      //console.log("this component has no parent!");
     }
 
+
+  },
+
+
+  swapIfNecessary(){
+    if(this.currentlyDropping === true)
+    {
+
+          let dropTarget = this.findDropTarget();
+
+          //get the parent component of the currently dragged item. If there is no parentId, then it is root and the sortable-group is the parent.
+          let draggedComponentParent = ( this.currentlyDraggedComponent.get('parent') !== null ? this.currentlyDraggedComponent.get('parent') : this);
+
+          let swapDropTarget = false;
+
+          //dropTarget can be undefined if we are dragging out of bounds. Must check or we error.
+          if(dropTarget && (draggedComponentParent.get('elementId') !== dropTarget.get('elementId')))
+          {
+            //if the dragged components parent element, is not the same as the drop target then we need to move this object to a different depth.
+            swapDropTarget = true;
+          }
+
+          if(swapDropTarget == true)
+          {
+            console.log("swap is true");
+            this.swap(dropTarget);
+
+            //reset the start positions of items
+            delete this._itemPosition;
+            this.deleteChildPositions(this.get('sortedItems')); //recursive delete cached positions of childs.
+
+            //reflow the update, which doesn' work so much for our nested items.
+            //TODO//
+            //We just need to update the Y position of the dragged component to be accurate.
+            /*
+            if (groupDirection === 'y') {
+              this.set('y', dimension);
+            }
+            */
+
+            console.log("draggedItem="+this.currentlyDraggedComponent.get('elementId'));
+            console.log("dropTarget="+dropTarget.get('elementId'));
+            console.log("------POSITIONS------");
+            console.log("current mouse y="+this.get('currentMousePosition').y);
+            //this.logPositions(this.get('sortedItems'));
+
+            //this.currentlyDraggedComponent.set('_y','-900');
+            //this.currentlyDraggedComponent.set('model.title',this.currentlyDraggedComponent.get('model.title').replace(/\d+$/, '')+Date.now());
+
+            /*
+             *
+             * When we are dropping an item into a new depth, we are actually creating a new component object.
+             * -When commit is run, we are changing the MODEL in the route.
+             * -Our template is then re-rendered using the models in the correct sort order.
+             * -If we have removed a child and added to a new depth, this is a new component that hasn't existed before because it is rendered by the sortable-group/item component template.
+             *
+             */
+
+             //complete the swap before running commit.
+             //taken from nested-item _complete:
+                   this.currentlyDraggedComponent.set('isDropping', false);
+                   this.set('setCurrentlyDropping', false); //ED let the group know the state for easy checking
+                   //set the wasDropped state of this sortable-item so when we commit below, we know which object was dragged.
+                   this.currentlyDraggedComponent.set('wasDropped', true);
+
+
+                   //testing
+                   console.log("item tree after drop (update)");
+                   this.get('items').forEach(item => {
+                     console.log(item.elementId);
+                     console.log(item.model);
+                       if(item.get('children')){
+                             item.get('children').forEach(child => {
+                               console.log(item.elementId+child.elementId);
+                               console.log(child.model);
+                                 if(child.get('children')){
+                                       child.get('children').forEach(child2 => {
+                                         console.log(child2.model);
+                                       });
+                                 }
+
+                             });
+                       }
+                   });
+
+            //this.update();
+
+            /*  TO DO
+             *
+             *  #1 - Fix position of dropped items during SWAP.
+             *
+             *  #2 - Visual indicators of item position when SWAP dragging between drop targets.
+             *            -Maybe we don't have to do it how they've been doing it. Maybe we can come up with a visually better way.
+             *
+             *  Maybe we can update the sort-item drag to operate on different levels. It should detect what element it is inside and then
+             *  insert the ghost element/push the others out of the way.
+             *
+             *  #3 - Add CSS transitions and start testing on iPad / Phone. Make the user experience fairly slick and easy.
+             *
+             *  #4 - Flatten and make accordian.
+             *
+             *  #5 - Make Visual Drop target indicators.
+             *
+             *  Turn on model refreshing later.
+             *
+             */
+          }
+    }
 
   },
 
@@ -690,7 +811,12 @@ items.forEach((component, index) => {
       //try deleting the model from parent's model.children.
       this.deleteChildModel(this.currentlyDraggedComponent);
 
-
+/*
+      if(this.currentlyDropping === true)
+      {
+      debugger;
+      }
+*/
 
       //set the parent for the currentlyDraggedComponent to its drop target
       //evaluate if the drop target is the root element (sortable-nested-group)
@@ -767,48 +893,29 @@ items.forEach((component, index) => {
               Sort is already complete by "update" above.
    **/
   commit() {
-    let dropTarget = this.findDropTarget();
-
-    //get the parent component of the currently dragged item. If there is no parentId, then it is root and the sortable-group is the parent.
-    let draggedComponentParent = ( this.currentlyDraggedComponent.get('parent') !== null ? this.currentlyDraggedComponent.get('parent') : this);
-
-    let swapDropTarget = false;
-
-    //dropTarget can be undefined if we are dragging out of bounds. Must check or we error.
-    if(dropTarget && (draggedComponentParent.get('elementId') !== dropTarget.get('elementId')))
-    {
-      //if the dragged components parent element, is not the same as the drop target then we need to move this object to a different depth.
-      swapDropTarget = true;
-    }
 
 
-    if(swapDropTarget == true)
-    {
-      this.swap(dropTarget);
+    console.log("item tree after drop (commit)");
+    this.get('items').forEach(item => {
+      console.log(item.elementId);
+      console.log(item.model);
+        if(item.get('children')){
+              item.get('children').forEach(child => {
+                console.log(item.elementId+child.elementId);
+                console.log(child.model);
+                  if(child.get('children')){
+                        child.get('children').forEach(child2 => {
+                          console.log(child2.model);
+                        });
+                  }
 
-
-      /*  TO DO
-       *
-       *  We need to send an accurate itemModels back to the route. Need to ensure the children of the last position are updated.
-       *     -Delete the item from previous node. Either root, or children. ***Maybe we only need to do it on children level.***
-       *     -Maybe the child component is still listed under the parent component, may have nothing to do with model.
-       *
-       *  Maybe we can update the sort-item drag to operate on different levels. It should detect what element it is inside and then
-       *  insert the ghost element/push the others out of the way.
-       *
-       *  Turn on model refreshing later.
-       *
-       */
-    }
-
-
-
-
+              });
+        }
+    });
 
     //get the list of sorted sortable-item components.
     let items = this.get('sortedItems'); //component classes, sorted in the new order.
 
-    console.log(items.toArray());
     //get the original ember model assigned to sortable-group.
     //we don't manipulate this model directly, and send it back in the callback as is.
     let groupModel = this.get('model'); //model objects

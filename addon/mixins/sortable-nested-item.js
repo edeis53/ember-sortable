@@ -183,6 +183,69 @@ export default Ember.Mixin.create(SortableItemMixin, {
     },
 
 
+    /**
+      @method _drop
+      @private
+    */
+    /**
+      017:   mouseUp or toucheEnd has been triggered. Time to drop!
+     **/
+
+    _drop() {
+      //If we don't have an html element or there is no jquery, quit.
+      if (!this.element || !this.$()) { return; }
+
+      //stop any propogration of click in this sortable-item
+      this._preventClick(this.element);
+
+      //set the dragging state to false, useful for CSS classes and callbacks.
+      this.set('isDragging', false);
+      //set the dropping state to true for css or callbacks
+      this.set('isDropping', true);
+
+      this._tellGroup('setCurrentlyDropping', true); //ED let the group know the state for easy checking
+
+      //update the sort order of the group for the last time. Doesn't do anything different that when we are dragging. Works the same.
+      this._tellGroup('update');
+
+
+      //wait for all rendering to complete, then complete the drop.
+      this._waitForTransition()
+        .then(run.bind(this, '_complete'));
+    },
+
+
+    /**
+      @method _complete
+      @private
+    */
+    /**
+      018:   mouseUp or toucheEnd has been triggered. Time to drop!
+     **/
+
+    _complete() {
+      //drag and drop is now complete.
+      //Trigger the onDragStop callback and send it the model assigned to sortable-item-component.model, which is the model for this item only.
+      invokeAction(this, 'onDragStop', this.get('model'));
+
+      //we are done dropping now.
+      //ED if we dropped a swap item, it gets destroyed and recreated as the route model updates and the components are rerendered.
+      if (!this.isDestroyed && !this.isDestroying)
+      {
+        //this is only for normal sorting within folders or root
+        this.set('isDropping', false);
+        this._tellGroup('setCurrentlyDropping', false); //ED let the group know the state for easy checking
+
+        //set the wasDropped state of this sortable-item so when we commit below, we know which object was dragged.
+        this.set('wasDropped', true);
+      }
+
+
+      //tell the sortable-group to commit the changes.
+      this._tellGroup('commit');
+    }
+
+
 });
 
 /**
