@@ -44,9 +44,12 @@ export default SortableGroupComponent.extend({
   activeDropTargets: computed(() => a()),
 
   currentlyDraggedComponent: null, //what component are we currently dragging?
+  currentlyDraggedModel: null, //save the model because the component id will update after rendering.
+
 
   setCurrentlyDraggedComponent(component){
     this.set('currentlyDraggedComponent', component);
+    this.set('currentlyDraggedModel', component.get('model'));
   },
 
   /**
@@ -625,7 +628,7 @@ items.forEach((component, index) => {
       set(item, '_childPosition', null);
 
       //if this item has children (recursive)
-      if(item.get('children') && item.get('children').length > 0)
+      if(item.get('children') && item.get('children.length') > 0)
       {
         //recursive children
         this.deleteChildPositions(item.get('children'));
@@ -739,6 +742,23 @@ items.forEach((component, index) => {
 
     },
 
+
+
+  logPositions(items){
+    items.forEach(item => {
+      console.log(item.get('elementId')+" y="+item.get('y'));
+
+      let parentElement = $(item.element.parentNode);
+      let scrollOrigin = parentElement.offset().top;
+      console.log("parentNode offset.top = "+scrollOrigin);
+
+      if(item.get('children') && item.get('children.length') > 0)
+      {
+        console.log('-position recursion');
+        this.logPositions(item.get('children'));
+      }
+    });
+  },
   /**
     @method commit
   */
