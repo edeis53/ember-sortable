@@ -208,12 +208,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
       //update the sort order of the group for the last time. Doesn't do anything different that when we are dragging. Works the same.
       this._tellGroup('update');
 
-
       //wait for all rendering to complete, then complete the drop.
       this._waitForTransition()
         .then(run.bind(this, '_complete'));
     },
-
 
     /**
       @method _complete
@@ -229,17 +227,12 @@ export default Ember.Mixin.create(SortableItemMixin, {
       invokeAction(this, 'onDragStop', this.get('model'));
 
       //we are done dropping now.
-      //ED if we dropped a swap item, it gets destroyed and recreated as the route model updates and the components are rerendered.
-      if (!this.isDestroyed && !this.isDestroying)
-      {
-        //this is only for normal sorting within folders or root
-        this.set('isDropping', false);
-        this._tellGroup('setCurrentlyDropping', false); //ED let the group know the state for easy checking
+      this.set('isDropping', false);
 
-        //set the wasDropped state of this sortable-item so when we commit below, we know which object was dragged.
-        this.set('wasDropped', true);
-      }
+      //set the wasDropped state of this sortable-item so when we commit below, we know which object was dragged.
+      this.set('wasDropped', true);
 
+      this._tellGroup('setCurrentlyDropping', false); //ED let the group know the state for easy checking
 
       //tell the sortable-group to commit the changes.
       this._tellGroup('commit');

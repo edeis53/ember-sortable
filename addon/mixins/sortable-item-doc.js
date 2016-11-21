@@ -705,7 +705,7 @@ export default Mixin.create({
     //update the sort order of the group for the last time. Doesn't do anything different that when we are dragging. Works the same.
     this._tellGroup('update');
 
-    //wait for all animation (CSS) rendering to complete, then complete the drop.
+    //wait for all rendering to complete, then complete the drop.
     this._waitForTransition()
       .then(run.bind(this, '_complete'));
   },
