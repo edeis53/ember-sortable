@@ -14,7 +14,8 @@
 
 {{#each model.children as |child|}}
   {{#sortable-nested-item class=class parent=this model=child group=group handle=handle as |EmberComponentItem|}}
-    Title: {{child.id}}-{{child.title}} <span class="handle">&varr;</span>
+    <div class="menu-title">Title: {{child.id}}-{{child.title}}</div>
+    <span class="handle">&varr;</span>
   {{/sortable-nested-item}}
 {{/each}}
 

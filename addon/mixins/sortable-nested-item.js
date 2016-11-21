@@ -14,6 +14,9 @@ const a = A;
 
 //extend the original sortable-item-mixin and override methods
 export default Ember.Mixin.create(SortableItemMixin, {
+    classNames: ['sortable-item'],
+    //https://guides.emberjs.com/v2.9.0/components/customizing-a-components-element/#toc_customizing-the-element-s-class
+    classNameBindings: ['isDragging', 'isDropping', 'hasChildren:sortable-has-children'],
 
     //if this object has a parent.
     //defined in the handlebars template
@@ -30,6 +33,16 @@ export default Ember.Mixin.create(SortableItemMixin, {
     _childPosition: null,
 
 
+    //http://blog.learningspaces.io/property-or-observer-emberjs-explained/
+    hasChildren: function() {
+      if(this.get('model.children') && this.get('model.children.length') > 0)
+      {
+        return true;
+      } else {
+        return false;
+      }
+    }.property('model.children'),
+
     /**
       @method didInsertElement
     */
@@ -38,6 +51,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
          001:  Registers this item with the sortable-group. Which sortable-group we talk to is defined by the GROUP property of this sortable-item.
        **/
 
+       console.log(this.get('hasChildren'));
       //this._super(); //don't need the extended one firing.
 
       // scheduled to prevent deprecation warning:

@@ -414,6 +414,18 @@ export default SortableGroupComponent.extend({
 
     this.isSwap();
 
+      //let's trying doing something else on update instead of the usual.
+
+      /******************************/
+        //NEW UPDATE STYLE.
+
+
+
+
+        return;
+      /******************************/
+
+
     //if we are swapping, the models will be updated in commit.
     //stop display of wrong position.
     if(this.swapDropTarget == true && this.currentlyDropping == true)
@@ -790,11 +802,11 @@ items.forEach((component, index) => {
             }
         });
 
+        //run swap to move dragged item into this target
         this.swap(this.dropTarget);
 
 
 
-        console.log("Droptarget=");
         //set the private _y property directly, as settig y on it's own triggers the CSS transform, which isn't what we need.
         //http://stackoverflow.com/questions/4249648/jquery-get-mouse-position-within-an-element
 
@@ -802,11 +814,6 @@ items.forEach((component, index) => {
         //i don't know why, but if swapping into root, the yPosition needs to have the height of the dragged element to it.
         let yPosInsideElement = (this === this.dropTarget ? this.currentlyDraggedComponent.get('height') : 0) + this.get('currentMousePosition').y - this.dropTarget.get('element.offsetTop');
         this.currentlyDraggedComponent.set('_y', yPosInsideElement);
-
-        this.update();
-        //reset
-        this.dropTarget = null;
-        this.swapDropTarget = false;
       }
 
       /*  TO DO
@@ -874,6 +881,16 @@ items.forEach((component, index) => {
     //this is set during _startDrag(event) in sortable-item component. drag is complete, we don't need it anymore.
     delete this._itemPosition;
     this.deleteChildPositions(items); //recursive delete cached positions of childs.
+
+    //reset
+    console.log("drop target on commit="+this.dropTarget.get('elementId'));
+    $('#'+this.dropTarget.get('elementId')).removeClass('sortable-activeDropTarget');
+
+    this.dropTarget = null;
+    this.swapDropTarget = false;
+
+
+
 
 
     console.log("current mouse position = "+this.get('currentMousePosition').y);
