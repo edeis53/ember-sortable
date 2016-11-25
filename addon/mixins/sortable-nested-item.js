@@ -28,6 +28,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //to determine which sortable-item or sortable-group component is the active drop target.
     pendingDropTarget: false,
     activeDropTarget: false,
+    overlapDraggedItem: null, //how much of this item overlaps with the dragged item. If more that 50% than it is the drop target.
 
     //cached position of the first element in a folder.
     _childPosition: null,

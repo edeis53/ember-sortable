@@ -37,10 +37,11 @@ export default SortableGroupComponent.extend({
   //these are like sortable-item properties.
   pendingDropTarget: false,
   activeDropTarget: false, //if this group is the drop target, it's property will be true.
+  overlapDraggedItem: null, //how much of this item overlaps with the dragged item. If more that 50% than it is the drop target.
 
   activeDropTargetComponent: null, //keep a record of what the active drop target in the group is.
 
-  //array of active drop targets
+  //array of pending drop targets
   activeDropTargets: computed(() => a()),
 
   currentlyDraggedComponent: null, //what component are we currently dragging?
@@ -239,7 +240,7 @@ export default SortableGroupComponent.extend({
   },
 
   //recursive search to see if object has child with the following key/value.
-  hasChild(item, key, value)
+  hasChild(item, key, operand, value)
   {
     //Get the children. If we are checking the group, then we need the list of items as children. Otherwise we are checking the sort-itmes children
     var children = (item.get('children') === undefined ? this.get('items') : item.get('children') );
@@ -253,17 +254,32 @@ export default SortableGroupComponent.extend({
       //console.log("children.length = "+children.length);
       children.forEach(child => {
 
-        if(child.get(key) === value)
+        //choose our selection criteria
+        if(operand === '===')
         {
-          hasChildCount++;
+          if(child.get(key) === value)
+          {
+            hasChildCount++;
+          }
+        } else if(operand === '>='){
+          if(child.get(key) >= value)
+          {
+            hasChildCount++;
+          }
+        } else if(operand === '<='){
+          if(child.get(key) <= value)
+          {
+            hasChildCount++;
+          }
         }
+
 
         //if this item has children (recursive)
         if(child.get('children') && child.get('children').length > 0)
         {
           //recursive children
           child.get('children').forEach(childItem => {
-              hasChildCount = hasChildCount + this.hasChild(childItem, key, value);
+              hasChildCount = hasChildCount + this.hasChild(childItem, key, operand, value);
           });
         }
       });
@@ -271,13 +287,64 @@ export default SortableGroupComponent.extend({
     return hasChildCount;
   },
 
+  //recursive search to see if object has parent with the following key/value.
+  hasParent(item, key, value)
+  {
+    //Get the parent
+    var parent = item.get('parent');
+
+    //init
+    var hasParentCount = 0;
+
+    //does this item have a parent?
+    if(parent !== null && parent !== undefined)
+    {
+      //console.log("children.length = "+children.length);
+      if(parent.get(key) === value)
+      {
+        hasParentCount++;
+      }
+
+      //if this item has parent (recursive)
+      if(parent.get('parent') !== null)
+      {
+        //recursive parent
+        hasParentCount = hasParentCount + this.hasParent(parent, key, value);
+      }
+
+    }
+    return hasParentCount;
+  },
+
+  //http://stackoverflow.com/questions/4230029/jquery-javascript-collision-detection
+  overlaps: (function () {
+    function getPositions( elem ) {
+        var pos, width, height;
+        pos = $( elem ).offset();
+        width = $( elem ).outerWidth();
+        height = $( elem ).outerHeight();
+        return [ [ pos.left, pos.left + width ], [ pos.top, pos.top + height ] ];
+    }
+
+    function comparePositions( p1, p2 ) {
+        var r1, r2;
+        r1 = p1[0] < p2[0] ? p1 : p2;
+        r2 = p1[0] < p2[0] ? p2 : p1;
+        return r1[1] > r2[0] || r1[0] === r2[0];
+    }
+
+    return function ( a, b ) {
+        var pos1 = getPositions( a ),
+            pos2 = getPositions( b );
+        return comparePositions( pos1[0], pos2[0] ) && comparePositions( pos1[1], pos2[1] );
+    };
+})(),
 
    isDropTarget(component){
-     let x = this.get('currentMousePosition').x,
-     y = this.get('currentMousePosition').y;
 
      //reset
      var item = '#' + component.get('elementId');
+     set(component, 'overlapDraggedItem', null);
      set(component, 'pendingDropTarget', false);
      set(component, 'activeDropTarget', false);
      $(item).removeClass('sortable-activeDropTarget');
@@ -286,17 +353,18 @@ export default SortableGroupComponent.extend({
      if (!get(component, 'isBusy') && !get(component, 'wasDropped')) {
            //http://stackoverflow.com/questions/12396635/crossing-over-to-new-elements-during-touchmove
            //If the dragged object is within bounds on the component, the add a class that it is a valid drop target.
-           if (!(
-         x <= $(item).offset().left || x >= $(item).offset().left + $(item).outerWidth() ||
-         y <= $(item).offset().top  || y >= $(item).offset().top + $(item).outerHeight()
-           )) {
 
-             //$(item).addClass('sortable-pending-target'); //for testing
+           //if the dragged item overlaps with possible drop target
+           //and it doesn't have a parent that is being dragged (otherwise the child of the dragged element can accidentally be seleted as drop target)
+           if ( this.overlaps(this.currentlyDraggedComponent.element, component.element) && this.hasParent(component, 'isBusy', true) == 0) {
+
+             $(item).addClass('sortable-pending-target'); //for testing
              set(component, 'pendingDropTarget', true);
              this.activeDropTargets.pushObject(component);
 
            } else {
-             //$(item).removeClass('sortable-pending-target'); //for testing
+             $(item).removeClass('sortable-pending-target'); //for testing
+             set(component, 'overlapDraggedItem', null);
              set(component, 'pendingDropTarget', false);
              set(component, 'activeDropTarget', false);
              $(item).removeClass('sortable-activeDropTarget');
@@ -316,6 +384,46 @@ export default SortableGroupComponent.extend({
 
    },
 
+   calculateOverlapArea(component, div2){
+
+    var div1 = $(component.get('element'));
+
+    var l1=div1.offset().left;
+    var t1=div1.offset().top;
+    var w1=div1.outerWidth();
+    var h1=div1.outerHeight();
+
+    var l2=div2.offset().left;
+    var t2=div2.offset().top;
+    var w2=div2.outerWidth();
+    var h2=div2.outerHeight();
+
+    var top = Math.max(t1,t2);
+    var left = (l2>l1 && l2<(l1+w1)) ? l2 : (l1>l2 && l1<(l2+w2)) ? l1 : 0;
+    var width = Math.max(Math.min(l1+w1,l2+w2) - Math.max(l1,l2),0);
+    var height = Math.max(Math.min(t1+h1,t2+h2) - Math.max(t1,t2),0);
+    return {"component": component, "elementId": div1.attr('id'), "width": width, "height": height};
+  },
+
+   compareOverlap(a, b) {
+
+      let overlapA = this.calculateOverlapArea($(a.get('element')), $(this.currentlyDraggedComponent.element)),
+      overlapB = this.calculateOverlapArea($(b.get('element')), $(this.currentlyDraggedComponent.element));
+
+      let areaA = overlapA.width * overlapA.height,
+      areaB = overlapB.width * overlapB.height;
+
+      //console.log(overlapA.elementId+" = "+areaA+(this.elementId === overlapA.elementId ? " is ROOT" : ''));
+      //console.log(overlapB.elementId+" = "+areaB+(this.elementId === overlapB.elementId ? " is ROOT" : ''));
+
+      if(areaA > areaB)
+      {
+        return a;
+      } else {
+        return b;
+      }
+   },
+
    findDropTarget() {
     //create an array of the possible drop areas
     let sortItems = a();
@@ -332,6 +440,7 @@ export default SortableGroupComponent.extend({
     */
 
     this.activeDropTargets = Ember.A();
+    this.activeDropTargetComponent = null; //reset
 
     //http://stackoverflow.com/questions/18804592/javascript-foreach-loop-on-associative-array-object
     sortItems.forEach(component => {
@@ -342,27 +451,136 @@ export default SortableGroupComponent.extend({
     });
 
 
+//REVISIONS:::
+//Find the objects with pendingDropTarget.
+//then calculate which object has overlap > 50%.  that is 50% of the dragged item.
+//-----or if the middle point of the dragged object (50%) is inside the drop target.
+//----or just the drop target which has more overlap with dragged object.
+
+//compare items in activeDropTargets
+
+
     //now check and see if there are more than one drop target (nested groups)
     if (this.activeDropTargets.length > 1)
     {
-      this.activeDropTargets.forEach((component, index, enumerable) => {
-        let item = '#' + component.get('elementId');
+      var overlapCalculations = a();
 
+        console.log("------List of active DropTargets-----");
+      this.activeDropTargets.forEach((component, index, enumerable) => {
+            let item = '#' + component.get('elementId');
+
+
+            //how much of this component is covered by the dragged item?
+            component.set('overlapDraggedItem', this.calculateOverlapArea(component, $(this.currentlyDraggedComponent.element)));
+
+            //show elementID and the amount of overlap.
+            console.log(component.get('elementId')+" overlap="+component.get('overlapDraggedItem.height'));
+
+      });
+
+
+      //if the target is a child, the parent and root will always have 100% overlap.
+      //in these cases, you need to look and see if the child has more than 50%, otherwise drop area is parent or root
+      let sortByOverlap = this.activeDropTargets.sortBy('overlapDraggedItem.height').reverse(); //descending order
+
+      var draggedItemHeight = $(this.currentlyDraggedComponent.get('element')).outerHeight();
+
+      //find the activeDrop target by sorting through the drop targets starting with the components with the most overlap.
+      sortByOverlap.forEach(component => {
+        //if we've already found the drop target, skip checking the items with smaller overlap.
+        if (this.get('activeDropTargetComponent') !== null)
+        {
+          //console.log("skipping");
+          return;
+        }
+
+        //does this item have 100% overlap?
+        //it is either root or a parent.
+        if(component.get('overlapDraggedItem.height') === draggedItemHeight)
+        {
+          //do we have a child with 100% overlap?
+          //hasChild returns a count of children meeting the criteria
+          if( this.hasChild(component, 'overlapDraggedItem.height', '===', draggedItemHeight) > 0)
+          {
+            //if we have a child with 100% overlap, then we are inside a parent node (folder).
+            //console.log(component.get('elementId')+" HAS A CHILD WITH 100% OVERLAP!");
+
+            $(component.get('element')).removeClass('sortable-activeDropTarget');
+            $(component.get('element')).removeClass('sortable-pending-target'); //for testing
+            //set this component's activeDropTarget property to false.
+            set(component, 'activeDropTarget', false);
+            //remove this component from the list of activeDropTargets (pending)
+            this.activeDropTargets.removeObject(component);
+            return;
+          } else if( this.hasChild(component, 'overlapDraggedItem.height', '>=', (draggedItemHeight / 2)) > 0) {
+            //this component has 100% overlap, and HAS a recursive child component with 50% or more overlap
+            //this component is not the drop target
+            $(component.get('element')).removeClass('sortable-activeDropTarget');
+            $(component.get('element')).removeClass('sortable-pending-target'); //for testing
+            //set this component's activeDropTarget property to false.
+            set(component, 'activeDropTarget', false);
+            //remove this component from the list of activeDropTargets (pending)
+            this.activeDropTargets.removeObject(component);
+            return;
+          } else if( this.hasChild(component, 'overlapDraggedItem.height', '>=', (draggedItemHeight / 2)) === 0) {
+            //this component has 100% overlap, and has NO recursive child components with 50% or more overlap
+            //this component must be the drop target.
+            set(component, 'activeDropTarget', true);
+            //give the group a record of what the activeDropTargetComponet is.
+            this.set('activeDropTargetComponent', component);
+          }
+        } else {
+          //evaluate components that do not have 100% overlap.
+          if( component.get('overlapDraggedItem.height') >= (draggedItemHeight / 2) ) {
+            //this component has 100% overlap, and has NO recursive child components with 50% or more overlap
+            //this component must be the drop target.
+            set(component, 'activeDropTarget', true);
+            //give the group a record of what the activeDropTargetComponet is.
+            this.set('activeDropTargetComponent', component);
+          }
+
+        }
+
+      });
+
+
+/*
         //if there are more than zero childs with the following properties
         if( this.hasChild(component, 'pendingDropTarget', true) > 0)
         {
           //this element has a child with pendingDropTarget=true, skip.
           $(item).removeClass('sortable-activeDropTarget');
+          $(item).removeClass('sortable-pending-target'); //for testing
           //set this component's activeDropTarget property to false.
           set(component, 'activeDropTarget', false);
+          //remove this component from the list of activeDropTargets (pending)
+          this.activeDropTargets.removeObject(component);
           return;
         } else {
-          //set this component's activeDropTarget property to true.
-          set(component, 'activeDropTarget', true);
-          //give the group a record of what the activeDropTargetComponet is.
-          this.set('activeDropTargetComponent', component);
+
+          //now we have viable drop targets (as we could be overlapping multiple)
+          //find out which element has more overlap.
+          if (this.activeDropTargets.length === 2)
+          {
+            //console.log("there are two drop targets to decide between");
+            let overlapTarget = this.compareOverlap(this.activeDropTargets[0],this.activeDropTargets[1]);
+
+            //set this component's activeDropTarget property to true.
+            set(overlapTarget, 'activeDropTarget', true);
+            //give the group a record of what the activeDropTargetComponet is.
+            this.set('activeDropTargetComponent', overlapTarget);
+          } else {
+            //DEFAULT: Just go with the last item in the list.
+
+            //set this component's activeDropTarget property to true.
+            set(component, 'activeDropTarget', true);
+            //give the group a record of what the activeDropTargetComponet is.
+            this.set('activeDropTargetComponent', component);
+          }
         }
       });
+*/
+        console.log("------END  of active DropTargets-----");
     } else if (this.activeDropTargets.length === 1) {
       //there is only element in the array, which is the only possible drop target
       //set this component's activeDropTarget property to true.
@@ -377,7 +595,7 @@ export default SortableGroupComponent.extend({
     //Indicate which is the active group in CSS. If null/false then we are inbetween the groups
     if(this.activeDropTargetComponent)
     {
-      $('#' + this.activeDropTargetComponent.get('elementId')).addClass('sortable-activeDropTarget');
+      $(this.activeDropTargetComponent.get('element')).addClass('sortable-activeDropTarget');
     }
 
     return this.activeDropTargetComponent;
@@ -419,10 +637,19 @@ export default SortableGroupComponent.extend({
       /******************************/
         //NEW UPDATE STYLE.
 
+        //if collission of more than 33% of underneath element, transform it to move the outerHeight of the dragged element (height+margin);
+
+        //USE the middle of the dragged item??
+
+        //As soon as the object collides, nested drop target should be eligible.
+
+        //IF more than 50% of the object is in the drop area.
 
 
+        //++ for UPDATE:: If more that 50% of the underneath object is covered by the dragged object, it should move out of the way.
+        //we can also change the height of dropped elements to fit the new one.
 
-        return;
+        //return;
       /******************************/
 
 
