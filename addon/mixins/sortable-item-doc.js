@@ -636,7 +636,7 @@ export default Mixin.create({
           //It'd be the same value if we didn't add it anyways.
           //WHY: We just using CSS transform to visually move the element in the dom.
           //However, the sortable-item-component is storing the actual position in the dom as it's y property, which we'll use when sorting the objects in the group. All is good.
-      //In this case y i just the distance the mouse moved.
+      //In this case y is just the distance the mouse moved.
       let dy = y - this.element.offsetTop;
 
       //transform the position of the sortable-item element by the distance that the mouse has moved.

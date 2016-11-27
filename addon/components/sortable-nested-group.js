@@ -45,6 +45,7 @@ export default SortableGroupComponent.extend({
   activeDropTargets: computed(() => a()),
 
   currentlyDraggedComponent: null, //what component are we currently dragging?
+  currentlyDraggedComponentPosition: null, //what is the position of the currently dragged component within the activeDropTarget area
 
   swapDropTarget: false,
 
@@ -58,6 +59,34 @@ export default SortableGroupComponent.extend({
 
   setCurrentlyDropping(boolean){
     this.set('currentlyDropping', boolean);
+  },
+
+  didInsertElement() {
+    //See ghost
+    $( this.element ).css('position', 'relative');
+  },
+
+  createGhost(){
+
+    //SORTABLE GROUP CSS must have position=relative for the ghost to work propery.
+    //See did insert element.
+    let width = $( this.currentlyDraggedComponent.element ).css('width'),
+      height = $( this.currentlyDraggedComponent.element ).css('height'),
+      //parse int converts from 19px to 19;
+      top = $( this.currentlyDraggedComponent.element ).offset().top - (  parseInt($( this.currentlyDraggedComponent.element ).css('margin-top'))   +  $( this.element ).offset().top);
+
+    //create the ghost object
+    $( this.currentlyDraggedComponent.element ).clone().attr("id","sortable-ghost").attr("style","position:absolute;background:purple;width:"+width+";height:"+height+";top:"+top+"px;z-index:5000;").addClass('is-dragging').appendTo( this.element );
+
+    //change the opacity of the original object
+    $( this.currentlyDraggedComponent.element ).css('opacity', 0.4);
+  },
+
+
+  destroyGhost(){
+    $( "#sortable-ghost" ).remove();
+
+    $( this.currentlyDraggedComponent.element ).css('opacity', 1);
   },
 
 
@@ -465,7 +494,7 @@ export default SortableGroupComponent.extend({
     {
       var overlapCalculations = a();
 
-        console.log("------List of active DropTargets-----");
+        //console.log("------List of active DropTargets-----");
       this.activeDropTargets.forEach((component, index, enumerable) => {
             let item = '#' + component.get('elementId');
 
@@ -474,7 +503,7 @@ export default SortableGroupComponent.extend({
             component.set('overlapDraggedItem', this.calculateOverlapArea(component, $(this.currentlyDraggedComponent.element)));
 
             //show elementID and the amount of overlap.
-            console.log(component.get('elementId')+" overlap="+component.get('overlapDraggedItem.height'));
+            //console.log(component.get('elementId')+" overlap="+component.get('overlapDraggedItem.height'));
 
       });
 
@@ -580,7 +609,7 @@ export default SortableGroupComponent.extend({
         }
       });
 */
-        console.log("------END  of active DropTargets-----");
+        //console.log("------END  of active DropTargets-----");
     } else if (this.activeDropTargets.length === 1) {
       //there is only element in the array, which is the only possible drop target
       //set this component's activeDropTarget property to true.
@@ -620,6 +649,23 @@ export default SortableGroupComponent.extend({
     }
 
   },
+
+  //what is the position of the currently dragged component within the activeDropTarget area
+  draggedItemNodePosition(){
+
+
+      let draggedElement = $(this.currentlyDraggedComponent.get('element')),
+          //drop target can be undefined if we are dragged outside of the sortable-group, so use root/sortable-group
+          dropTargetElement = (this.activeDropTargetComponent ? $(this.activeDropTargetComponent.get('element')) : $(this.get('element')));
+
+      //offset uses position relative to the document
+      let offset = draggedElement.offset().top - dropTargetElement.offset().top;
+
+      //get the position relative to the parent node.
+      this.currentlyDraggedComponentPosition = offset;
+  },
+
+
   /**
     014: Update the group.
           --Called on each mouse move and during drop event.
@@ -631,6 +677,9 @@ export default SortableGroupComponent.extend({
   update() {
 
     this.isSwap();
+
+    //what is the position of the currently dragged component within the activeDropTarget area
+    this.draggedItemNodePosition();
 
       //let's trying doing something else on update instead of the usual.
 
@@ -657,7 +706,7 @@ export default SortableGroupComponent.extend({
     //stop display of wrong position.
     if(this.swapDropTarget == true && this.currentlyDropping == true)
     {
-      this.currentlyDraggedComponent.set('isVisible', false);
+      //this.currentlyDraggedComponent.set('isVisible', false);
     }
 
     /******************
@@ -725,6 +774,7 @@ COPY:
      * Position of the dragged item is updated prior to this. It is relative to the actual position in the dom.
      * So if you drag it to the top, it will be the first item, or second etc.
      */
+
      this.coordinateRecursiveUpdate(sortedItems, position);
 
   },
@@ -733,8 +783,8 @@ COPY:
   coordinateRecursiveUpdate(sortedItems, position) {
 
     var i = 0; //for test
-    sortedItems.forEach(item => {
-      position = this.updateEachSortItem(item, position);
+    sortedItems.forEach((item, index, sortedItems) => {
+      position = this.updateEachSortItem(item, position, index, sortedItems);
 
       //for test
       if(item.get('parent') && i == 0)
@@ -779,22 +829,68 @@ COPY:
 
   },
 
-  updateEachSortItem(item, position) {
+
+  findPreviousItemNotDraggedScope(sortedItems, index){
+
+    //sortedItems.length;  //10
+
+    var count = index; //4
+
+    var previousItem = false;
+
+    while (count >= 0)
+    {
+      //previous item
+      count = count - 1;
+      previousItem = sortedItems.objectAt(count);
+
+      if(previousItem && previousItem.get('isDragging') === false)
+      {
+        //return this item
+        break;
+      } else {
+        previousItem = false;
+      }
+
+    }
+
+    return previousItem;
+  },
+
+  isClosest(item, position, index, sortedItems, draggedPosition, itemParent, dimension){
+
+    let prevItem = this.findPreviousItemNotDraggedScope(sortedItems, index);
+
+    //ISSUE IS that when we compare Y it was it's old position. just used for sorting.
+    //We need to compare POSITION which is it's new position.
+
+    let futurePosition = item.get('y') + this.currentlyDraggedComponent.get(dimension);
+
+    if(
+      //if dragged component is below my bottom edge?
+      (draggedPosition > (item.get('y') + item.get(dimension)))
+    ){
+      console.log("didn't match :: below bottom edge"+index);
+      return false;
+    } else if (
+      //if dragged component is above by bottom edge, and if there is no previous item
+      (draggedPosition < (position + item.get(dimension)) && (prevItem === false ))
+      //if component is above my bottom edge and if is below the previous object
+      || (draggedPosition < (position + item.get(dimension)) && (prevItem === true && draggedPosition > (prevItem.get('y') + prevItem.get(dimension)) ))
+      // && ( ( prevItem && prevItem.get('isDragging') == false && draggedPosition > prevItem.get('y') ) || prevItem === undefined )
+    ){
+      console.log("matched"+index);
+      return true;
+    }
+
+    console.log("failed isClosest and prevItem="+prevItem);
+    return false;
+  },
+
+  updateEachSortItem(item, position, index, sortedItems) {
+    //index is the array index of the items we are looping through
     let dimension;
     let direction = this.get('direction');
-
-    //if it is not the element being dragged adjust it's position.
-    //if it is the very first element, then it's position is the same. We just grabbed the position of the first element above with position = this.get('itemPosition');
-    if (!get(item, 'isDragging')) {
-      set(item, direction, position);
-    }
-
-    // add additional spacing around active element
-    //eg. 'isBusy' = computed.or('isDragging', 'isDropping'),
-    if (get(item, 'isBusy')) {
-      //we aren't using spacing right now, so position isn't modified.
-      position += get(item, 'spacing') * 2;
-    }
 
     if (direction === 'x') {
       dimension = 'width';
@@ -805,13 +901,115 @@ COPY:
       dimension = 'height';
     }
 
+
+
+
+
+
+
+    //if the item parent is null, that means it is a root element, and needs the sortable-group manually assigned as its parent component
+    if(item.get('parent') !== null)
+    {
+      var itemParent = item.get('parent');
+      //var draggedPosition = this.currentlyDraggedComponentPosition + item.get('_childPosition');
+    } else {
+      //is the root node
+      var itemParent = this;
+      //var draggedPosition = this.currentlyDraggedComponentPosition + this.get('_itemPosition');
+    }
+
+var draggedPosition = $(this.currentlyDraggedComponent.get('element')).offset().top;
+
+let futurePosition = position + this.currentlyDraggedComponent.get(dimension);
+
+    console.log(index + item.get('elementId') + " this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+(position + this.currentlyDraggedComponent.get(dimension))+" bottomEdge="+(item.get('y') + item.get(dimension)) );
+
+
+    //adjust the position of every element, except for the dragged object.
+    if(!get(item, 'isDragging'))
+    {
+        if(this.isClosest(item, position, index, sortedItems, draggedPosition, itemParent, dimension))
+        {
+          //draggedPosition >= position && draggedPosition < nextItem.get(direction)
+
+          //increase the position by the height of the dragged component
+          position += this.currentlyDraggedComponent.get(dimension);
+
+          set(item, direction, position);
+
+          //now add the height of this item for the next loop
+          position += get(item, dimension);
+
+        } else {
+          //set the position of the item, then increment the next one by the height of this item
+          set(item, direction, position);
+          position += get(item, dimension);
+        }
+
+    }
+
+
+    // add additional spacing around active element
+    //eg. 'isBusy' = computed.or('isDragging', 'isDropping'),
+    if (get(item, 'isBusy')) {
+      //we aren't using spacing right now, so position isn't modified.
+      position += get(item, 'spacing') * 2;
+    }
+
+
+
+
+
+
+/*
+    //is this item at the same depth as the dragged item?
+    //eg. are both the dragged item and this item within the drop area?
+    if(itemParent === this.activeDropTargetComponent && !get(item, 'isDragging'))
+    {
+
+
+
+    } else {
+      //update children or other nodes that aren't in the drop area
+
+      //if it is not the element being dragged adjust it's position.
+      //if it is the very first element, then it's position is the same. We just grabbed the position of the first element above with position = this.get('itemPosition');
+      if (!get(item, 'isDragging')) {
+        console.log("else "+index);
+        set(item, direction, position);
+      }
+
+      //if we are iterating over the dragged item, don't adjust the position tree.
+      //we'll adjust it later.
+      if (!get(item, 'isDragging')) {
+        position += get(item, dimension);
+      }
+    }
+
+*/
+
+
+
+
+
+
+
+
+
     /**
       016: Now we are going to iterate to the next sortable-item in the list.
               Next item's position is going to be to relative to the current item.
                 -below get(item, "height")  is constant alias for Ember.get()
                 -sortable-item has a height() computer property.
      **/
-    return position += get(item, dimension);
+
+
+
+
+
+
+
+    return position;
   },
 
 
@@ -1104,6 +1302,40 @@ items.forEach((component, index) => {
       draggedModel = get(draggedItem, 'model');
     }
 
+
+
+
+
+        console.log("current mouse position = "+this.get('currentMousePosition').y);
+
+        //default this._y = this.element.offsetTop;
+        console.log("dragged item offsetTop = "+this.currentlyDraggedComponent.element.offsetTop);
+
+        console.log("item tree after drop (update)");
+        this.get('sortedItems').forEach(item => {
+          console.log(item.elementId+" y="+item.get('y')+" offset="+item.element.offsetTop);
+          //console.log(item);
+            if(item.get('children')){
+                  item.get('children').forEach(child => {
+                    console.log(item.elementId+child.elementId+" y="+child.get('y')+" offset="+child.element.offsetTop);
+                    //console.log(child);
+                      if(child.get('children')){
+                            child.get('children').forEach(child2 => {
+                              console.log(item.elementId+child.elementId+child2.elementId+" y="+child2.get('y'));
+                              //console.log(child2);
+                            });
+                      }
+
+                  });
+            }
+        });
+
+        //debugger;
+
+
+
+
+
     //delete cache the original position of the first sortable-item within the group
     //this is set during _startDrag(event) in sortable-item component. drag is complete, we don't need it anymore.
     delete this._itemPosition;
@@ -1115,36 +1347,11 @@ items.forEach((component, index) => {
 
     this.dropTarget = null;
     this.swapDropTarget = false;
+    this.set('currentlyDraggedComponent', null);
 
 
 
 
-
-    console.log("current mouse position = "+this.get('currentMousePosition').y);
-
-    //default this._y = this.element.offsetTop;
-    console.log("dragged item offsetTop = "+this.currentlyDraggedComponent.element.offsetTop);
-
-    console.log("item tree after drop (update)");
-    this.get('sortedItems').forEach(item => {
-      console.log(item.elementId+" y="+item.get('y')+" offset="+item.element.offsetTop);
-      //console.log(item);
-        if(item.get('children')){
-              item.get('children').forEach(child => {
-                console.log(item.elementId+child.elementId+" y="+child.get('y')+" offset="+child.element.offsetTop);
-                //console.log(child);
-                  if(child.get('children')){
-                        child.get('children').forEach(child2 => {
-                          console.log(item.elementId+child.elementId+child2.elementId+" y="+child2.get('y'));
-                          //console.log(child2);
-                        });
-                  }
-
-              });
-        }
-    });
-
-    //debugger;
 
 
 
