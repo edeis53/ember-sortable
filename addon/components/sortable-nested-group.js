@@ -73,7 +73,11 @@ export default SortableGroupComponent.extend({
     let width = $( this.currentlyDraggedComponent.element ).css('width'),
       height = $( this.currentlyDraggedComponent.element ).css('height'),
       //parse int converts from 19px to 19;
-      top = $( this.currentlyDraggedComponent.element ).offset().top - (  parseInt($( this.currentlyDraggedComponent.element ).css('margin-top'))   +  $( this.element ).offset().top);
+      //we have to account for margin in absolute position, and move the item up by the amount of margin in the sortable-group
+      top = $( this.currentlyDraggedComponent.element ).offset().top - (parseInt($("#"+this.elementId+" > .sortable-item" ).css('margin-top')) + $( this.element ).offset().top);
+
+
+
 
       this.currentlyDraggedComponent.ghostId = "sortable-ghost-"+this.currentlyDraggedComponent.get('model.id');
 

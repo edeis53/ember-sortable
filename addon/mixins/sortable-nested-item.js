@@ -621,6 +621,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
       delete this._ydrag;
       delete this._xdrag;
 
+      //reset height
+      this._originalHeight = this._height = $(this.element).outerHeight();
+
       el.css({ transform: '' });
       el.height(); // Force-apply styles
     },
