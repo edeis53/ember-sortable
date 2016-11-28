@@ -36,6 +36,18 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //save the position before css transforms manipulate it
     _offset: null,
 
+    //unique id for ghost element (uses modelid)
+    ghostId: null,
+
+    ghostElement() {
+      if(this.ghostId !== null)
+      {
+        return "#"+this.ghostId;
+      } else {
+        return this.element;
+      }
+    },
+
     /**
       Horizontal position of the item.
       @property x
@@ -120,6 +132,49 @@ export default Ember.Mixin.create(SortableItemMixin, {
     },
 
     /**
+       003: Setup the custom drag event. Since touch doesn't have a drag state, we bind our drag listener to the mouse move events.
+     **/
+    _primeDrag(event) {
+      let handle = this.get('handle');
+
+      //check is the user tapped on the handle. if not, quit.
+      if (handle && !$(event.target).closest(handle).length) {
+        return;
+      }
+
+      //stop any default actions of the mouseclick or tap
+      event.preventDefault();
+      event.stopPropagation();
+
+      //tell the group what is the currently dragged component
+      this._tellGroup('setCurrentlyDraggedComponent', this);//ED
+
+      this._tellGroup('createGhost'); //ED
+
+      //arrow function
+      //https://www.sitepoint.com/es6-arrow-functions-new-fat-concise-syntax-javascript/
+      /* same as:
+          this._startDragListener = function (event){
+            return this._startDrag(event);
+          }
+
+      */
+      this._startDragListener = event => this._startDrag(event);
+
+      this._cancelStartDragListener = () => {
+        $(window).off('mousemove touchmove', this._startDragListener);
+        this._tellGroup('destroyGhost'); //ED
+      };
+
+      /**
+         004: The mouse is currently down. If they move their mouse, run the startDragListener ONCE ONLY
+          -If they stop their click, cancel the draglistener from running on mouse mouve.
+       **/
+      $(window).one('mousemove touchmove', this._startDragListener);
+      $(window).one('click mouseup touchend', this._cancelStartDragListener);
+    },
+
+    /**
       @method _startDrag
       @private
     */
@@ -161,11 +216,6 @@ export default Ember.Mixin.create(SortableItemMixin, {
         009.1: cache the original position of the first sortable-item within the group to a private variable the sortable-group for reference: sortable-group.this._itemPosition
       **/
       this._tellGroup('prepare');
-
-      //tell the group what is the currently dragged component
-      this._tellGroup('setCurrentlyDraggedComponent', this);//ED
-
-      this._tellGroup('createGhost'); //ED
 
       this.set('isDragging', true);
       invokeAction(this, 'onDragStart', this.get('model'));
@@ -277,7 +327,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
         let x = this.get('x');
         let dx = x - this.element.offsetLeft + parseFloat(this.$().css('margin-left'));
 
-        this.$("#sortable-ghost").css({
+        this.$("#"+this.ghostId).css({
           transform: `translateX(${dx}px)`
         });
       }
@@ -302,7 +352,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
         //console.log ("y ="+y+"dy ="+dy);
         //transform the position of the sortable-item element by the distance that the mouse has moved.
-        $("#sortable-ghost").css({
+        $("#"+this.ghostId).css({
           transform: `translateY(${dy}px)`
         });
       }
@@ -334,7 +384,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
       this._tellGroup('destroyGhost'); //ED
 
       //update the sort order of the group for the last time. Doesn't do anything different that when we are dragging. Works the same.
-      this._tellGroup('update');
+
+      //Nov.27, update won't work here, because we've destroyedGhost and update checks droptarget.
+      //this._tellGroup('update');
 
       //wait for all rendering to complete, then complete the drop.
       this._waitForTransition()

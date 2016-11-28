@@ -75,8 +75,12 @@ export default SortableGroupComponent.extend({
       //parse int converts from 19px to 19;
       top = $( this.currentlyDraggedComponent.element ).offset().top - (  parseInt($( this.currentlyDraggedComponent.element ).css('margin-top'))   +  $( this.element ).offset().top);
 
-    //create the ghost object
-    $( this.currentlyDraggedComponent.element ).clone().attr("id","sortable-ghost").attr("style","position:absolute;background:purple;width:"+width+";height:"+height+";top:"+top+"px;z-index:5000;").addClass('is-dragging').appendTo( this.element );
+      this.currentlyDraggedComponent.ghostId = "sortable-ghost-"+this.currentlyDraggedComponent.get('model.id');
+
+        //create the ghost object
+        //with 0 opacity. there was a small flicker as it was moved into the dom.
+        $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; background:purple; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000; opacity:1;").addClass('is-dragging').appendTo( this.element );
+
 
     //change the opacity of the original object
     $( this.currentlyDraggedComponent.element ).css('opacity', 0.4);
@@ -84,8 +88,8 @@ export default SortableGroupComponent.extend({
 
 
   destroyGhost(){
-    $( "#sortable-ghost" ).remove();
-
+    $( "#"+this.currentlyDraggedComponent.ghostId ).remove();
+    this.currentlyDraggedComponent.ghostId = null;
     $( this.currentlyDraggedComponent.element ).css('opacity', 1);
   },
 
@@ -385,7 +389,7 @@ export default SortableGroupComponent.extend({
 
            //if the dragged item overlaps with possible drop target
            //and it doesn't have a parent that is being dragged (otherwise the child of the dragged element can accidentally be seleted as drop target)
-           if ( this.overlaps(this.currentlyDraggedComponent.element, component.element) && this.hasParent(component, 'isBusy', true) == 0) {
+           if ( this.overlaps(this.currentlyDraggedComponent.ghostElement(), component.element) && this.hasParent(component, 'isBusy', true) == 0) {
 
              $(item).addClass('sortable-pending-target'); //for testing
              set(component, 'pendingDropTarget', true);
@@ -436,8 +440,8 @@ export default SortableGroupComponent.extend({
 
    compareOverlap(a, b) {
 
-      let overlapA = this.calculateOverlapArea($(a.get('element')), $(this.currentlyDraggedComponent.element)),
-      overlapB = this.calculateOverlapArea($(b.get('element')), $(this.currentlyDraggedComponent.element));
+      let overlapA = this.calculateOverlapArea($(a.get('element')), $(this.currentlyDraggedComponent.ghostElement())),
+      overlapB = this.calculateOverlapArea($(b.get('element')), $(this.currentlyDraggedComponent.ghostElement()));
 
       let areaA = overlapA.width * overlapA.height,
       areaB = overlapB.width * overlapB.height;
@@ -500,7 +504,7 @@ export default SortableGroupComponent.extend({
 
 
             //how much of this component is covered by the dragged item?
-            component.set('overlapDraggedItem', this.calculateOverlapArea(component, $(this.currentlyDraggedComponent.element)));
+            component.set('overlapDraggedItem', this.calculateOverlapArea(component, $(this.currentlyDraggedComponent.ghostElement())));
 
             //show elementID and the amount of overlap.
             //console.log(component.get('elementId')+" overlap="+component.get('overlapDraggedItem.height'));
@@ -512,7 +516,7 @@ export default SortableGroupComponent.extend({
       //in these cases, you need to look and see if the child has more than 50%, otherwise drop area is parent or root
       let sortByOverlap = this.activeDropTargets.sortBy('overlapDraggedItem.height').reverse(); //descending order
 
-      var draggedItemHeight = $(this.currentlyDraggedComponent.get('element')).outerHeight();
+      var draggedItemHeight = $(this.currentlyDraggedComponent.ghostElement()).outerHeight();
 
       //find the activeDrop target by sorting through the drop targets starting with the components with the most overlap.
       sortByOverlap.forEach(component => {
@@ -654,7 +658,7 @@ export default SortableGroupComponent.extend({
   draggedItemNodePosition(){
 
 
-      let draggedElement = $(this.currentlyDraggedComponent.get('element')),
+      let draggedElement = $(this.currentlyDraggedComponent.ghostElement()),
           //drop target can be undefined if we are dragged outside of the sortable-group, so use root/sortable-group
           dropTargetElement = (this.activeDropTargetComponent ? $(this.activeDropTargetComponent.get('element')) : $(this.get('element')));
 
@@ -918,13 +922,21 @@ COPY:
       //var draggedPosition = this.currentlyDraggedComponentPosition + this.get('_itemPosition');
     }
 
-var draggedPosition = $(this.currentlyDraggedComponent.get('element')).offset().top;
+var draggedPosition = $(this.currentlyDraggedComponent.ghostElement()).offset().top;
 
 let futurePosition = position + this.currentlyDraggedComponent.get(dimension);
 
     console.log(index + item.get('elementId') + " this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+(position + this.currentlyDraggedComponent.get(dimension))+" bottomEdge="+(item.get('y') + item.get(dimension)) );
 
 
+    //set the position of the item, then increment the next one by the height of this item
+    if(!get(item, 'isDragging'))
+    {
+      set(item, direction, position);
+      position += get(item, dimension);
+    }
+
+    /*
     //adjust the position of every element, except for the dragged object.
     if(!get(item, 'isDragging'))
     {
@@ -946,7 +958,7 @@ let futurePosition = position + this.currentlyDraggedComponent.get(dimension);
           position += get(item, dimension);
         }
 
-    }
+    }*/
 
 
     // add additional spacing around active element
