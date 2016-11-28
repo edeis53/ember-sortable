@@ -43,6 +43,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //save the position before css transforms manipulate it
     _originalOffset: null,
 
+    //save the height before we scale it to add items.
+    _originalHeight: null,
+    _height: null, //current height to render too.
+
     //unique id for ghost element (uses modelid)
     ghostId: null,
 
@@ -102,7 +106,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
         if (value !== this._y) {
           this._y = value; //save the _y position to compare later. (cached)
           //_scheduleApplyPosition, sortable-item position is only updated if we need to.
-          this._scheduleApplyPositionDrag();
+          this._scheduleApplyPosition();
         }
       }
     }).volatile(), //Call on a computed property to set it into non-cached mode. When in this mode the computed property will not automatically cache the return value.
@@ -264,6 +268,11 @@ export default Ember.Mixin.create(SortableItemMixin, {
       run.schedule("afterRender", this, "_tellGroup", "registerItem", this);
 
       run.schedule("afterRender", this, "_tellGroup", "registerChildren", this); //register children with parent.
+
+      run.schedule('afterRender', () => {
+        this._originalHeight = this._height = $(this.element).outerHeight();
+      });
+
 
     },
 
@@ -500,18 +509,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
         let x = this.get('x');
         let dx = x - this.element.offsetLeft + parseFloat(this.$().css('margin-left'));
 
-        if(this.isDragging === true)
-        {
-          $("#"+this.ghostId).css({
-            transform: `translateX(${dx}px)`
-          });
-        } else {
+
           this.$().css({
             transform: `translateX(${dx}px)`
           });
-        }
-
-
 
       }
 
@@ -536,17 +537,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
         //console.log ("y ="+y+"dy ="+dy);
         //transform the position of the sortable-item element by the distance that the mouse has moved.
 
-        //if dragging, transform the ghost element only.
-        if(this.isDragging === true)
-        {
-          $("#"+this.ghostId).css({
-            transform: `translateY(${dy}px)`
-          });
-        } else {
           this.$().css({
             transform: `translateY(${dy}px)`
           });
-        }
 
       }
     },
@@ -575,6 +568,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
       this._tellGroup('setCurrentlyDropping', true); //ED let the group know the state for easy checking
 
       this._tellGroup('destroyGhost'); //ED
+
+      //convert the drag coordinates to actual coordinates
+      this._y = this._ydrag;
+      this._x = this._xdrag;
 
       //update the sort order of the group for the last time. Doesn't do anything different that when we are dragging. Works the same.
 
