@@ -78,8 +78,7 @@ export default SortableGroupComponent.extend({
       this.currentlyDraggedComponent.ghostId = "sortable-ghost-"+this.currentlyDraggedComponent.get('model.id');
 
         //create the ghost object
-        //with 0 opacity. there was a small flicker as it was moved into the dom.
-        $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; background:purple; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000; opacity:1;").addClass('is-dragging').appendTo( this.element );
+        $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; background:purple; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000;").addClass('is-dragging').appendTo( this.element );
 
 
     //change the opacity of the original object
@@ -826,7 +825,7 @@ COPY:
         }
 
         //recursive children
-        this.coordinateRecursiveUpdate(item.get('children'), childPosition);
+        //this.coordinateRecursiveUpdate(item.get('children'), childPosition);
       }
 
     });
@@ -861,33 +860,29 @@ COPY:
     return previousItem;
   },
 
-  isClosest(item, position, index, sortedItems, draggedPosition, itemParent, dimension){
+  makeSpacerForDraggedObject(item, position, index, sortedItems, draggedPosition, itemParent, dimension){
 
     let prevItem = this.findPreviousItemNotDraggedScope(sortedItems, index);
 
     //ISSUE IS that when we compare Y it was it's old position. just used for sorting.
     //We need to compare POSITION which is it's new position.
 
+
+    //position of where we'd be if we insert the draggedComponentSpacer
     let futurePosition = item.get('y') + this.currentlyDraggedComponent.get(dimension);
 
-    if(
-      //if dragged component is below my bottom edge?
-      (draggedPosition > (item.get('y') + item.get(dimension)))
-    ){
-      console.log("didn't match :: below bottom edge"+index);
+    //if this item's parent is in the same node as the drop target, insert a space for the ghost object and don't move it.
+    if(itemParent === this.activeDropTargetComponent)
+    {
+      //this.currentlyDraggedComponent._originalOffset
+
+
+      console.log("matched makeSpacerForDraggedObject="+index);
       return false;
-    } else if (
-      //if dragged component is above by bottom edge, and if there is no previous item
-      (draggedPosition < (position + item.get(dimension)) && (prevItem === false ))
-      //if component is above my bottom edge and if is below the previous object
-      || (draggedPosition < (position + item.get(dimension)) && (prevItem === true && draggedPosition > (prevItem.get('y') + prevItem.get(dimension)) ))
-      // && ( ( prevItem && prevItem.get('isDragging') == false && draggedPosition > prevItem.get('y') ) || prevItem === undefined )
-    ){
-      console.log("matched"+index);
-      return true;
+      //return true;
     }
 
-    console.log("failed isClosest and prevItem="+prevItem);
+    console.log("failed makeSpacerForDraggedObject on index = "+index);
     return false;
   },
 
@@ -926,21 +921,22 @@ var draggedPosition = $(this.currentlyDraggedComponent.ghostElement()).offset().
 
 let futurePosition = position + this.currentlyDraggedComponent.get(dimension);
 
-    console.log(index + item.get('elementId') + " this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+(position + this.currentlyDraggedComponent.get(dimension))+" bottomEdge="+(item.get('y') + item.get(dimension)) );
+    console.log(index + item.get('elementId') + " this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+(position + this.currentlyDraggedComponent.get(dimension))+" bottomEdge="+(item.get('y') + item.get(dimension)) + " item original offset = "+item._originalOffset+" ydrag="+item._ydrag);
 
 
-    //set the position of the item, then increment the next one by the height of this item
-    if(!get(item, 'isDragging'))
-    {
-      set(item, direction, position);
-      position += get(item, dimension);
-    }
 
     /*
+     *
+     *
+     *
+     *
+     */
+
+
     //adjust the position of every element, except for the dragged object.
     if(!get(item, 'isDragging'))
     {
-        if(this.isClosest(item, position, index, sortedItems, draggedPosition, itemParent, dimension))
+        if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, draggedPosition, itemParent, dimension))
         {
           //draggedPosition >= position && draggedPosition < nextItem.get(direction)
 
@@ -958,7 +954,8 @@ let futurePosition = position + this.currentlyDraggedComponent.get(dimension);
           position += get(item, dimension);
         }
 
-    }*/
+    }
+
 
 
     // add additional spacing around active element

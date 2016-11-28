@@ -14,9 +14,16 @@ const a = A;
 
 //extend the original sortable-item-mixin and override methods
 export default Ember.Mixin.create(SortableItemMixin, {
-    classNames: ['sortable-item'],
-    //https://guides.emberjs.com/v2.9.0/components/customizing-a-components-element/#toc_customizing-the-element-s-class
-    classNameBindings: ['isDragging', 'isDropping', 'hasChildren:sortable-has-children'],
+  //https://guides.emberjs.com/v2.9.0/components/customizing-a-components-element/#toc_customizing-the-element-s-class
+  classNameBindings: ['hasChildren:sortable-has-children'],
+
+    /**
+      True if the item is currently being dragged.
+      @property isDragging
+      @type Boolean
+      @default false
+    */
+    isDragging: false,
 
     //if this object has a parent.
     //defined in the handlebars template
@@ -34,7 +41,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
     _childPosition: null,
 
     //save the position before css transforms manipulate it
-    _offset: null,
+    _originalOffset: null,
 
     //unique id for ghost element (uses modelid)
     ghostId: null,
@@ -83,7 +90,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
       get() {
         if (this._y === undefined) {
           //this._y = this.element.offsetTop;
-          this._offset = this._y = $(this.element).offset().top; //ED convert from relative to parent, this.element.offsetTop;, to jquery which uses position within document.$(this.element).offset().top
+          this._originalOffset = this._y = $(this.element).offset().top; //ED convert from relative to parent, this.element.offsetTop;, to jquery which uses position within document.$(this.element).offset().top
           //save the value as offset for future reference.
         }
 
@@ -95,12 +102,141 @@ export default Ember.Mixin.create(SortableItemMixin, {
         if (value !== this._y) {
           this._y = value; //save the _y position to compare later. (cached)
           //_scheduleApplyPosition, sortable-item position is only updated if we need to.
-          this._scheduleApplyPosition();
+          this._scheduleApplyPositionDrag();
+        }
+      }
+    }).volatile(), //Call on a computed property to set it into non-cached mode. When in this mode the computed property will not automatically cache the return value.
+
+    /**
+      Horizontal position of the item.
+      @property x
+      @type Number
+    */
+    xdrag: computed({
+      get() {
+        if (this._xdrag === undefined) {
+          let marginLeft = parseFloat(this.$().css('margin-left'));
+          this._xdrag = this.element.scrollLeft + this.element.offsetLeft - marginLeft;
+        }
+
+        return this._xdrag;
+      },
+      set(_, value) {
+        if (value !== this._xdrag) {
+          this._xdrag = value;
+          this._scheduleApplyPositionDrag();
+        }
+      },
+    }).volatile(),
+
+    /**
+      Vertical position of the item relative to its offset parent.
+      @property y
+      @type Number
+    */
+
+    /**
+      011: Now update the Y position of the sortable-item component.
+    **/
+    ydrag: computed({
+      get() {
+        if (this._ydrag === undefined) {
+          //this._y = this.element.offsetTop;
+          this._originalOffset = this._ydrag = $(this.element).offset().top; //ED convert from relative to parent, this.element.offsetTop;, to jquery which uses position within document.$(this.element).offset().top
+          //save the value as offset for future reference.
+        }
+
+        return this._ydrag;
+      },
+      set(key, value) {
+        //perform update only if the update value is different from the current private position.
+        //this._y was initialized earlier when we called _makeDragHandler and set "elementOrigin"
+        if (value !== this._ydrag) {
+          this._ydrag = value; //save the _y position to compare later. (cached)
+          //_scheduleApplyPosition, sortable-item position is only updated if we need to.
+          this._scheduleApplyPositionDrag();
         }
       }
     }).volatile(), //Call on a computed property to set it into non-cached mode. When in this mode the computed property will not automatically cache the return value.
 
 
+    /**
+      @method _scheduleApplyPosition
+      @private
+    */
+    /**
+      012: Schedule apply position to run once on the next render loop
+              -called during set.x or set.y
+    **/
+    _scheduleApplyPositionDrag() {
+      run.scheduleOnce('render', this, '_applyPositionDrag');
+    },
+
+    /**
+      013: Apply the new position of the sortable-item by changing it's CSS transform.
+              -called during set.x or set.y
+    **/
+    _applyPositionDrag() {
+      //if we don't have a DOM element or there isn't Jquery, then quit.
+      if (!this.element || !this.$()) { return; }
+
+      //are we sorting Y axis or X axis?
+      const groupDirection = this.get('group.direction');
+
+      if (groupDirection === 'x') {
+        let x = this.get('xdrag');
+        let dx = x - this.element.offsetLeft + parseFloat(this.$().css('margin-left'));
+
+        if(this.isDragging === true)
+        {
+          $("#"+this.ghostId).css({
+            transform: `translateX(${dx}px)`
+          });
+        } else {
+          this.$().css({
+            transform: `translateX(${dx}px)`
+          });
+        }
+
+
+
+      }
+
+      //Here's what we are doing
+      if (groupDirection === 'y') {
+        //get the Y position that we need to update to.
+        //y contains the element's orignal start position +/- the amount the mouse has moved
+        let y = this.get('ydrag');
+
+        //Subtract the y position of the sortable-item component from the top of it's parent (sortable-group)
+            //At first appearenace doesn't appear to be really necessary.
+            //eg, in the drag event, we are calculating Y as:
+            //let y = elementOrigin + dy
+            //where elementOrigin is equal to this.element.offsetTop.
+            //It'd be the same value if we didn't add it anyways.
+            //WHY: We just using CSS transform to visually move the element in the dom.
+            //However, the sortable-item-component is storing the actual position in the dom as it's y property, which we'll use when sorting the objects in the group. All is good.
+        //In this case y is just the distance the mouse moved.
+        let dy = y - this._originalOffset;
+        //let dy = y - $(this.element).offset().top; //ED convert from this.element.offsetTop which is just relative to parent, to jquery which is relative to document. //$(this.element).offset().top
+
+        //console.log ("y ="+y+"dy ="+dy);
+        //transform the position of the sortable-item element by the distance that the mouse has moved.
+
+        //if dragging, transform the ghost element only.
+        if(this.isDragging === true)
+        {
+          $("#"+this.ghostId).css({
+            transform: `translateY(${dy}px)`
+          });
+        } else {
+          this.$().css({
+            transform: `translateY(${dy}px)`
+          });
+        }
+
+      }
+    },
 
     //http://blog.learningspaces.io/property-or-observer-emberjs-explained/
     hasChildren: function() {
@@ -245,7 +381,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       if (groupDirection === 'x') {
         dragOrigin = getX(startEvent);
-        elementOrigin = this.get('x');
+        elementOrigin = this.get('xdrag');
         scrollOrigin = parentElement.offset().left;
 
         return event => {
@@ -267,7 +403,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
         //get the Y position of our first click/movement
         dragOrigin = getY(startEvent);
         //get the Y position of this sortable-item component.  eg. this.element.offsetTop; on first call (init) here.
-        elementOrigin = this.get('y');
+        elementOrigin = this.get('ydrag');
         //get the difference between the parent div (most likely sortable-group) and the top of the page. DOM layout.
         //wil be the same value for all elements as they share the same parent.
         scrollOrigin = parentElement.offset().top;
@@ -313,6 +449,43 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
 
     /**
+      @method _drag
+      @private
+    */
+    /**
+      010: _drag runs on each mouseMove with new position of the sortable element (it's origin +/- mouseMove distance)
+              --dimension is just the value of pixels to move.
+    **/
+    _drag(dimension) {
+      //The frequency with which the group is informed that an update is required.
+      let updateInterval = this.get('updateInterval');
+
+      //what direction is the sortable-group using? default is y axis sorting.
+      const groupDirection = this.get('group.direction');
+
+      if (groupDirection === 'x') {
+        this.set('xdrag', dimension);
+      }
+
+      //We are using Y axis sorting.
+      //now update the position of the sortable-item component.
+      /**
+        013.2: Calling this.set('y') applies the new position of the sortable-item by changing it's CSS transform.
+      **/
+      if (groupDirection === 'y') {
+        this.set('ydrag', dimension);
+      }
+
+      /**
+        014: Update the group.
+              --if we don't. All that we've accomplished is just dragging the sortable-item, which is stuck to the mouse. The elements don't reshuffle, that is accomplished by updating the group.
+
+      **/
+      run.throttle(this, '_tellGroup', 'update', updateInterval);
+    },
+
+
+    /**
       013: Apply the new position of the sortable-item by changing it's CSS transform.
               -called during set.x or set.y
     **/
@@ -327,9 +500,19 @@ export default Ember.Mixin.create(SortableItemMixin, {
         let x = this.get('x');
         let dx = x - this.element.offsetLeft + parseFloat(this.$().css('margin-left'));
 
-        this.$("#"+this.ghostId).css({
-          transform: `translateX(${dx}px)`
-        });
+        if(this.isDragging === true)
+        {
+          $("#"+this.ghostId).css({
+            transform: `translateX(${dx}px)`
+          });
+        } else {
+          this.$().css({
+            transform: `translateX(${dx}px)`
+          });
+        }
+
+
+
       }
 
       //Here's what we are doing
@@ -347,14 +530,24 @@ export default Ember.Mixin.create(SortableItemMixin, {
             //WHY: We just using CSS transform to visually move the element in the dom.
             //However, the sortable-item-component is storing the actual position in the dom as it's y property, which we'll use when sorting the objects in the group. All is good.
         //In this case y is just the distance the mouse moved.
-        let dy = y - this._offset;
+        let dy = y - this._originalOffset;
         //let dy = y - $(this.element).offset().top; //ED convert from this.element.offsetTop which is just relative to parent, to jquery which is relative to document. //$(this.element).offset().top
 
         //console.log ("y ="+y+"dy ="+dy);
         //transform the position of the sortable-item element by the distance that the mouse has moved.
-        $("#"+this.ghostId).css({
-          transform: `translateY(${dy}px)`
-        });
+
+        //if dragging, transform the ghost element only.
+        if(this.isDragging === true)
+        {
+          $("#"+this.ghostId).css({
+            transform: `translateY(${dy}px)`
+          });
+        } else {
+          this.$().css({
+            transform: `translateY(${dy}px)`
+          });
+        }
+
       }
     },
 
@@ -416,7 +609,24 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       //tell the sortable-group to commit the changes.
       this._tellGroup('commit');
-    }
+    },
+
+
+    /**
+      @method reset
+    */
+    reset() {
+      let el = this.$();
+      if (!el) { return; }
+
+      delete this._y;
+      delete this._x;
+      delete this._ydrag;
+      delete this._xdrag;
+
+      el.css({ transform: '' });
+      el.height(); // Force-apply styles
+    },
 
 
 });
