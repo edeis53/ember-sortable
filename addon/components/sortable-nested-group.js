@@ -30,6 +30,11 @@ export default SortableGroupComponent.extend({
   */
   items: computed(() => a()),
 
+
+  //list of allow model types for drop targets
+  //define in controller and pass to the component
+  allowedDropTargets: [],
+
   //currentMousePosition
   currentMousePosition: {},
 
@@ -390,6 +395,12 @@ export default SortableGroupComponent.extend({
 })(),
 
    isDropTarget(component){
+
+     //limit drop targets to the type of models defined in this.allowedDropTargets array.
+     if(this.allowedDropTargets.indexOf( component.get('model.type') )  === -1)
+     {
+       return;
+     }
 
      //reset
      var item = '#' + component.get('elementId');
@@ -936,60 +947,108 @@ COPY:
   makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension){
 
     //use the middle of the dragged object
-    var draggedPosition = $(this.currentlyDraggedComponent.ghostElement()).offset().top + ($(this.currentlyDraggedComponent.ghostElement()).outerHeight() / 2);
+    var draggedMiddlePosition = $(this.currentlyDraggedComponent.ghostElement()).offset().top + ($(this.currentlyDraggedComponent.ghostElement()).outerHeight() / 2);
+    var draggedTopEdge = $(this.currentlyDraggedComponent.ghostElement()).offset().top;
+    var draggedBottomEdge = $(this.currentlyDraggedComponent.ghostElement()).offset().top + ($(this.currentlyDraggedComponent.ghostElement()).outerHeight());
 
     var futurePosition = position + this.currentlyDraggedComponent.get(dimension);
 
     //when getting the height of the item, we must remove margin
     //outerHeight doesn't include margin by default.
     //http://api.jquery.com/outerheight/
-    var bottomEdge = (item.get('y') + $(item.element).outerHeight() );
 
     var prevItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'prev');
     var nextItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'next');
 
-    if(prevItem)
-    {
-      var prevItemBottomEdge = (prevItem.get('y') + $(prevItem.element).outerHeight() );
-    }
 
 
 
-
-    //console.log((item.get('parent') ? index+':nested> '+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+futurePosition+" bottomEdge="+bottomEdge + " item original offset = "+item._originalOffset+" ydrag="+item._ydrag+ " nextItem="+nextItem+" prevItem="+prevItem+" prevItemBottomEdge="+prevItemBottomEdge+" this.activeDropTargetComponent="+this.activeDropTargetComponent);
-
-
-
-
-
-
+    //console.log((item.get('parent') ? index+':nested> '+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedTopEdge="+draggedTopEdge+"  draggedMiddlePosition="+draggedMiddlePosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+futurePosition+" bottomEdge="+bottomEdge + " item original offset = "+item._originalOffset+" ydrag="+item._ydrag+ " nextItem="+nextItem+" prevItem="+prevItem+" prevItemBottomEdge="+prevItemBottomEdge+" this.activeDropTargetComponent="+this.activeDropTargetComponent);
 
 
     //ISSUE IS that when we compare Y it was it's old position. just used for sorting.
     //We need to compare POSITION which is it's new position.
 
 
+    //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" parent=DropTarget?? "+(itemParent === this.activeDropTargetComponent ? "TRUE" : "FALSE")+" prevItem?="+(prevItem ? "TRUE" : "FALSE")+" draggedTopEdge="+draggedTopEdge+" draggedBottomEdge="+draggedBottomEdge+" item.get('bottomEdge')="+item.get('bottomEdge')+" item.get('topEdge')"+item.get('topEdge'));
 
-    //if this item's parent is in the same node as the drop target, insert a space for the ghost object and don't move it.
+
+    console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
+
+    //if this item's parent is in the same node as the drop target.
     if(itemParent === this.activeDropTargetComponent)
     {
-      //console.log("same drop scope");
-      //if we are between two objects
-      //if these properties exist
-      /*
-      if((nextItem && prevItem && prevItemBottomEdge && item.get('isDragging') === false && prevItem.get('isDragging') === false) && draggedPosition > prevItemBottomEdge)
-      {
-        console.log("did the move");
-        return true;
-      }*/
 
-      //top most item
-      if(prevItem === false && draggedPosition < item.get('y') && item.get('isDragging') === false)
+      //above top most item
+      if(prevItem === false && draggedTopEdge < item.get('topEdge') && item.get('isDragging') === false)
       {
+        //console.log("topmost item");
+        //return true;
+      }
+
+      //upwards drag
+      //have to get the properties since they are computed.
+      if( prevItem && item.get('isDragging') === false && prevItem.get('isDragging') === false && (draggedTopEdge < item.get('bottomEdge'))
+          && (draggedTopEdge > prevItem.get('bottomEdge') || prevItem === false)
+      ){
+        //console.log("upwards drag");
         //return true;
       }
 
 
+      //depends of the size of the object being dragged
+      if($(this.currentlyDraggedComponent.ghostElement()).outerHeight() <= $(item.element).outerHeight())
+      {
+        //for dragged items that are smaller or equal in size to this item
+
+        //downwards drag
+
+        if( prevItem && item.get('isDragging') === false && prevItem.get('isDragging') === false && draggedBottomEdge > prevItem.get('bottomEdge')
+            && ( draggedBottomEdge < item.get('bottomEdge') )
+        ){
+          console.log("downwards drag small or equal");
+          return true;
+        }
+      } else {
+        //for dragged items that are larger than this item (eg. big folders going over a small item)
+
+          if( prevItem && item.get('isDragging') === false && prevItem.get('isDragging') === false && draggedBottomEdge > prevItem.get('bottomEdge')
+              && ( draggedTopEdge < item.get('topEdge') )
+          ){
+            //add then what to do to turn it off
+            if(item.get('hasDragSpacerAbove') === true && draggedBottomEdge > item.get('bottomEdge'))
+            {
+              return false
+            }
+
+            console.log("downwards drag larger");
+            return true;
+          }
+
+
+
+
+      }
+
+
+
+      //console.log("same drop scope");
+      //if we are between two objects
+      //if these properties exist
+/*
+      if((prevItem && prevItemBottomEdge && item.get('isDragging') === false && prevItem.get('isDragging') === false) && draggedMiddlePosition > prevItemBottomEdge && draggedMiddlePosition < item.get('y'))
+      {
+        console.log("did the move");
+        return true;
+      }
+
+      //top most item
+      if(prevItem === false && draggedTopPosition < item.get('y') && item.get('isDragging') === false)
+      {
+        return true;
+      }
+
+*/
       //console.log("matched makeSpacerForDraggedObject="+index);
       return false;
       //return true;
@@ -1057,25 +1116,29 @@ COPY:
      *
      */
 
-
     //adjust the position of every element, including the dragged object.
-    if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension) == 22)
+    if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
     {
       //console.log("added dragged item-height to position");
       //increase the position by the height of the dragged component, which includes the margin.
-      //position += this.currentlyDraggedComponent.get(dimension);
+      position += this.currentlyDraggedComponent.get(dimension);
 
-      //set(item, direction, position);
+      set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
+
+      //set the position of this item
+      set(item, direction, position);
 
       //now add the height of this item for the next loop
-      //position += get(item, dimension);
+      position += get(item, dimension);
 
     } else {
       //console.log("regular");
       //set the position of the item, then increment the next one by the height of this item
-      //set(item, direction, position);
-      //position += get(item, dimension);
+      set(item, direction, position);
+      set(item, 'hasDragSpacerAbove', false);
+      position += get(item, dimension);
     }
+
 
 
     //if this item is the current drop target, and we've adjusted it's height, remove the corresponding amount from position, because they space has already been inserted into the drop target
@@ -1084,7 +1147,7 @@ COPY:
     {
       //console.log("have child as drop or my height is different");
       //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
-      //position = position - this.currentlyDraggedComponent.get('height');
+      position = position - this.currentlyDraggedComponent.get('height');
     }
 
 

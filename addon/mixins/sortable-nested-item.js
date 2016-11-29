@@ -47,6 +47,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
     _originalHeight: null,
     _height: null, //current height to render too.
 
+
+    //keep track if this object has the dragSpacer above it. Useful for on/off states.
+    hasDragSpacerAbove: null,
+
     //unique id for ghost element (uses modelid)
     ghostId: null,
 
@@ -58,6 +62,25 @@ export default Ember.Mixin.create(SortableItemMixin, {
         return this.element;
       }
     },
+
+
+    //position names for easy code readibility
+    //when getting the height of the item, we must remove margin
+    //outerHeight doesn't include margin by default.
+    //http://api.jquery.com/outerheight/
+    topEdge: computed(function() {
+      return this.get('y');
+    }).volatile(),
+
+    bottomEdge: computed(function() {
+      return this.get('y') + $(this.element).outerHeight();
+    }).volatile(),
+
+    middlePosition: computed(function() {
+      return $(this.element).offset().top + ($(this.element).outerHeight() / 2);
+    }).volatile(),
+
+
 
     /**
       Horizontal position of the item.
