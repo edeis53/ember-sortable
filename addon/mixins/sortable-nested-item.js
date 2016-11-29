@@ -428,8 +428,6 @@ export default Ember.Mixin.create(SortableItemMixin, {
           //Get the mouse position relative to the top edge of the document (not window), so if you scroll down 500, the value should be 500
           this._pageY = getY(event);
 
-          //console.log("mousey="+this._pageY);
-
           //inform the dragCoordinator of this drag movement
           this._tellGroup('setCurrentPosition', getX(event), getY(event));//ED
 
@@ -444,7 +442,11 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
           //See (scrollOrigin - scrollY) = 0 because they have the same values. So nothing we need to worry about here.
           // Add the distance the mouse has moved to the inital Y position of the sortable-item component.
-          let y = elementOrigin + dy + (scrollOrigin - scrollY);
+          //let y = elementOrigin + dy + (scrollOrigin - scrollY);
+
+          //ED disable scrollOrigin function. Doesn't play well when you increase the size of an item to drop inside.
+          //To recreate: Make two sets of nested items. Drag the nested item from the bottom set into the top set, you'll see the error. ScrollY changes becuase we have a new offset top of this element.
+          let y = elementOrigin + dy;
 
           //console.log("this.element.offsetTop="+this.element.offsetTop+" $(this.element).offset().top="+$(this.element).offset().top);
           //console.log ("y = elementOrigin + dy + (scrollOrigin - scrollY) = "+elementOrigin +" "+ dy +" "+ scrollOrigin +" - "+ scrollY);

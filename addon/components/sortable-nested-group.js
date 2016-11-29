@@ -280,7 +280,7 @@ export default SortableGroupComponent.extend({
   },
 
   //recursive search to see if object has child with the following key/value.
-  hasChild(item, key, operand, value)
+  hasChild(item, key, operand, value, thisoperator=null)
   {
     //Get the children. If we are checking the group, then we need the list of items as children. Otherwise we are checking the sort-itmes children
     var children = (item.get('children') === undefined ? this.get('items') : item.get('children') );
@@ -293,6 +293,15 @@ export default SortableGroupComponent.extend({
     {
       //console.log("children.length = "+children.length);
       children.forEach(child => {
+
+        if(thisoperator !== null && value === null)
+        {
+          if(thisoperator === 'this.height / 2')
+          {
+            value = $( child.element ).outerHeight() / 2;
+          }
+
+        }
 
         //choose our selection criteria
         if(operand === '===')
@@ -534,6 +543,7 @@ export default SortableGroupComponent.extend({
           return;
         }
 
+
         //does this item have 100% overlap?
         //it is either root or a parent.
         if(component.get('overlapDraggedItem.height') === draggedItemHeight)
@@ -562,8 +572,10 @@ export default SortableGroupComponent.extend({
             //remove this component from the list of activeDropTargets (pending)
             this.activeDropTargets.removeObject(component);
             return;
-          } else if( this.hasChild(component, 'overlapDraggedItem.height', '>=', (draggedItemHeight / 2)) === 0) {
-            //this component has 100% overlap, and has NO recursive child components with 50% or more overlap
+          } else if( this.hasChild(component, 'overlapDraggedItem.height', '>=', (draggedItemHeight / 2)) === 0 && this.hasChild(component, 'overlapDraggedItem.height', '>=', null, 'this.height / 2') === 0) {
+
+            //this component has 100% overlap, and has NO recursive child components with 50% or more overlap of the dragged item
+            //OR this component has 100% overlap, and has NO recursive child components where the child is covered more than 50%
             //this component must be the drop target.
             set(component, 'activeDropTarget', true);
             //give the group a record of what the activeDropTargetComponet is.
@@ -571,8 +583,8 @@ export default SortableGroupComponent.extend({
           }
         } else {
           //evaluate components that do not have 100% overlap.
-          if( component.get('overlapDraggedItem.height') >= (draggedItemHeight / 2) ) {
-            //this component has 100% overlap, and has NO recursive child components with 50% or more overlap
+          if( component.get('overlapDraggedItem.height') >= (draggedItemHeight / 2) || component.get('overlapDraggedItem.height') >= ($( component.element ).outerHeight() / 2)) {
+            //this dragged component has more than 50% overlap, or the droptarget is overlapped by 50% or more.
             //this component must be the drop target.
             set(component, 'activeDropTarget', true);
             //give the group a record of what the activeDropTargetComponet is.
@@ -694,6 +706,7 @@ export default SortableGroupComponent.extend({
 
 
 
+
     //manage heights
     //if we are suppose to swap drop targets, and the active drop target is not the sortable-group.
     if (this.swapDropTarget === true && this.activeDropTargetComponent !== this)
@@ -793,6 +806,11 @@ COPY:
       position = this.get('itemPosition');
     }
 
+
+
+    //init the heights of the items for css transitions.
+    //this.initHeights(sortedItems);
+
     /*
      * Position of the dragged item is updated prior to this. It is relative to the actual position in the dom.
      * So if you drag it to the top, it will be the first item, or second etc.
@@ -800,6 +818,21 @@ COPY:
 
      this.coordinateRecursiveUpdate(sortedItems, position);
 
+  },
+
+  initHeights(sortedItems){
+    sortedItems.forEach(item => {
+
+      //if style-height isn't defined, set it.
+      if($("#"+item.elementId+'[style*="height"]').length === 0)
+      {
+        //set the original height on the element first, required for CSS transition to grow the item size.
+        $(item.element).css({
+          height: `${item._originalHeight}px`
+        });
+      }
+
+    });
   },
 
 
@@ -923,7 +956,7 @@ COPY:
 
 
 
-    console.log((item.get('parent') ? 'nested> '+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+futurePosition+" bottomEdge="+bottomEdge + " item original offset = "+item._originalOffset+" ydrag="+item._ydrag+ " nextItem="+nextItem+" prevItem="+prevItem+" prevItemBottomEdge="+prevItemBottomEdge+" this.activeDropTargetComponent="+this.activeDropTargetComponent);
+    //console.log((item.get('parent') ? index+':nested> '+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedPosition="+draggedPosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+futurePosition+" bottomEdge="+bottomEdge + " item original offset = "+item._originalOffset+" ydrag="+item._ydrag+ " nextItem="+nextItem+" prevItem="+prevItem+" prevItemBottomEdge="+prevItemBottomEdge+" this.activeDropTargetComponent="+this.activeDropTargetComponent);
 
 
 
@@ -940,7 +973,7 @@ COPY:
     //if this item's parent is in the same node as the drop target, insert a space for the ghost object and don't move it.
     if(itemParent === this.activeDropTargetComponent)
     {
-      console.log("same drop scope");
+      //console.log("same drop scope");
       //if we are between two objects
       //if these properties exist
       /*
@@ -995,20 +1028,12 @@ COPY:
       //update only if the height has changed, use parseInt to remove px from value.
       if(item._height !== parseInt($(item.element).css('height')))
       {
-          //set the original height on the element first, required for CSS transition to grow the item size.
+          //we've initialized the original height on the element first in update(), required for CSS transition to grow the item size.
           $(item.element).css({
-            height: `${item._originalHeight}px`
+            height: `${item._height}px`
           });
 
-          run.next(() => {
-            run.schedule('render', () => {
-              $(item.element).css({
-                height: `${item._height}px`
-              });
-            });
-          });
       }
-
 
     }
 
@@ -1034,9 +1059,9 @@ COPY:
 
 
     //adjust the position of every element, including the dragged object.
-    if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
+    if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension) == 22)
     {
-      console.log("added dragged item-height to position");
+      //console.log("added dragged item-height to position");
       //increase the position by the height of the dragged component, which includes the margin.
       //position += this.currentlyDraggedComponent.get(dimension);
 
@@ -1046,12 +1071,21 @@ COPY:
       //position += get(item, dimension);
 
     } else {
-      console.log("regular");
+      //console.log("regular");
       //set the position of the item, then increment the next one by the height of this item
       //set(item, direction, position);
       //position += get(item, dimension);
     }
 
+
+    //if this item is the current drop target, and we've adjusted it's height, remove the corresponding amount from position, because they space has already been inserted into the drop target
+    //or if this item has a child that is an active drop target
+    if(item._height !== item._originalHeight && item._height === parseInt($(item.element).css('height')) || this.hasChild(item, 'activeDropTarget', '===', true) > 0)
+    {
+      //console.log("have child as drop or my height is different");
+      //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
+      //position = position - this.currentlyDraggedComponent.get('height');
+    }
 
 
     // add additional spacing around active element
@@ -1449,6 +1483,8 @@ items.forEach((component, index) => {
     //reset
     console.log("drop target on commit="+this.dropTarget.get('elementId'));
     $(this.dropTarget.get('element')).removeClass('sortable-activeDropTarget');
+
+
     $(this.dropTarget.get('element')).css('height', 'auto'); //remove any height resizing
     this.dropTarget = null;
     this.swapDropTarget = false;
