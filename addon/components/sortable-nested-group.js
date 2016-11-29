@@ -91,16 +91,17 @@ export default SortableGroupComponent.extend({
 
 
     //change the opacity of the original object
-    $( this.currentlyDraggedComponent.element ).css('opacity', 0.4);
+    $( this.currentlyDraggedComponent.element ).css('visibility','hidden');
   },
 
 
   destroyGhost(){
     if(this.currentlyDraggedComponent)
     {
+      $( this.currentlyDraggedComponent.element ).css('visibility','visible');
       $( "#"+this.currentlyDraggedComponent.ghostId ).remove();
       this.currentlyDraggedComponent.ghostId = null;
-      $( this.currentlyDraggedComponent.element ).css('opacity', 1);
+
     }
 
   },
@@ -913,7 +914,7 @@ COPY:
         count = count + 1;
         item = sortedItems.objectAt(count);
 
-        if(item)
+        if(item && item.get('isDragging') === false)
         {
           //return this item
           break;
@@ -930,7 +931,24 @@ COPY:
         count = count - 1;
         item = sortedItems.objectAt(count);
 
-        if(item)
+        if(item && item.get('isDragging') === false)
+        {
+          //return this item
+          break;
+        } else {
+          item = false;
+        }
+
+      }
+    } else if (type === 'prev2nd'){
+
+      while (count >= 0)
+      {
+        //previous item
+        count = count - 1;
+        item = sortedItems.objectAt(count);
+
+        if(item && item.get('isDragging') === false)
         {
           //return this item
           break;
@@ -957,7 +975,9 @@ COPY:
     //outerHeight doesn't include margin by default.
     //http://api.jquery.com/outerheight/
 
+    //returns the next item with isDragging === false
     var prevItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'prev');
+    var prev2ndItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'prev2nd');
     var nextItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'next');
 
 
@@ -973,11 +993,66 @@ COPY:
     //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" parent=DropTarget?? "+(itemParent === this.activeDropTargetComponent ? "TRUE" : "FALSE")+" prevItem?="+(prevItem ? "TRUE" : "FALSE")+" draggedTopEdge="+draggedTopEdge+" draggedBottomEdge="+draggedBottomEdge+" item.get('bottomEdge')="+item.get('bottomEdge')+" item.get('topEdge')"+item.get('topEdge'));
 
 
-    console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
+    console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
 
     //if this item's parent is in the same node as the drop target.
     if(itemParent === this.activeDropTargetComponent)
     {
+
+
+      //depends of the size of the object being dragged
+      if($(this.currentlyDraggedComponent.ghostElement()).outerHeight() <= $(item.element).outerHeight())
+      {
+          ////above top most item
+          if (prevItem === false && draggedTopEdge < item.get('topEdge'))
+          {
+            return true;
+          }
+
+          //regular drag
+          //note: uses less than for one criteria and less than equals for the other, as position can fall on the inbetween value.
+          if( prevItem && draggedBottomEdge > prevItem.get('bottomEdge')
+              && ( draggedBottomEdge <= item.get('bottomEdge') )
+          ){
+            return true;
+          }
+
+      } else {
+
+          //special conditions for dragging large folders
+
+          ////above top most item
+          if (prevItem === false && draggedTopEdge < item.get('topEdge'))
+          {
+            //add then what to do to turn it off
+            if(item.get('hasDragSpacerAbove') === true && draggedBottomEdge > item.get('bottomEdge'))
+            {
+              return false
+            }
+
+            return true;
+          }
+
+
+          if( prevItem && draggedBottomEdge > prevItem.get('bottomEdge')
+              && ( draggedTopEdge <= item.get('topEdge') )
+          ){
+            //add then what to do to turn it off
+            if(item.get('hasDragSpacerAbove') === true && draggedBottomEdge > item.get('bottomEdge'))
+            {
+              return false
+            }
+
+            return true;
+          }
+
+
+      }
+
+
+
+
+
 
       //above top most item
       if(prevItem === false && draggedTopEdge < item.get('topEdge') && item.get('isDragging') === false)
@@ -1002,12 +1077,12 @@ COPY:
         //for dragged items that are smaller or equal in size to this item
 
         //downwards drag
-
-        if( prevItem && item.get('isDragging') === false && prevItem.get('isDragging') === false && draggedBottomEdge > prevItem.get('bottomEdge')
+        //console.log("here");
+        if( prevItem && item.get('isDragging') === false && draggedBottomEdge > prevItem.get('bottomEdge')
             && ( draggedBottomEdge < item.get('bottomEdge') )
         ){
-          console.log("downwards drag small or equal");
-          return true;
+          //console.log("downwards drag small or equal");
+          //return true;
         }
       } else {
         //for dragged items that are larger than this item (eg. big folders going over a small item)
@@ -1018,11 +1093,11 @@ COPY:
             //add then what to do to turn it off
             if(item.get('hasDragSpacerAbove') === true && draggedBottomEdge > item.get('bottomEdge'))
             {
-              return false
+              //return false
             }
 
-            console.log("downwards drag larger");
-            return true;
+            //console.log("downwards drag larger");
+            //return true;
           }
 
 
@@ -1116,27 +1191,31 @@ COPY:
      *
      */
 
-    //adjust the position of every element, including the dragged object.
-    if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
-    {
-      //console.log("added dragged item-height to position");
-      //increase the position by the height of the dragged component, which includes the margin.
-      position += this.currentlyDraggedComponent.get(dimension);
+     //skip the dragged item
+     if (!get(item, 'isDragging')) {
 
-      set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
+        //adjust the position of every element, including the dragged object.
+        if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
+        {
+          //console.log("added dragged item-height to position");
+          //increase the position by the height of the dragged component, which includes the margin.
+          position += this.currentlyDraggedComponent.get(dimension);
 
-      //set the position of this item
-      set(item, direction, position);
+          set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
 
-      //now add the height of this item for the next loop
-      position += get(item, dimension);
+          //set the position of this item
+          set(item, direction, position);
 
-    } else {
-      //console.log("regular");
-      //set the position of the item, then increment the next one by the height of this item
-      set(item, direction, position);
-      set(item, 'hasDragSpacerAbove', false);
-      position += get(item, dimension);
+          //now add the height of this item for the next loop
+          position += get(item, dimension);
+
+        } else {
+          //console.log("regular");
+          //set the position of the item, then increment the next one by the height of this item
+          set(item, direction, position);
+          set(item, 'hasDragSpacerAbove', false);
+          position += get(item, dimension);
+        }
     }
 
 
