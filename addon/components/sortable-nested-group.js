@@ -840,6 +840,8 @@ COPY:
 
   coordinateRecursiveUpdate(sortedItems, position) {
 
+    console.log("recursive, using this position="+position);
+
     var i = 0; //for test
     sortedItems.forEach((item, index, sortedItems) => {
       //reset height changing status on each loop
@@ -880,6 +882,15 @@ COPY:
 
           //save to the component private variable.
           set(item, '_childPosition', childPosition);
+        }
+
+        //Adjust for any css transform of the parent
+        var translateY = parseInt($(item.element).css('transform').split(',')[5]);
+        //will return as "NaN" (not a number) if the transform isn't set.
+        if(isNaN(translateY) === false)
+        {
+          //get the tranform:translateY value, which may be negative and add it to the childPosition
+          //childPosition = childPosition + translateY;
         }
 
         //recursive children
@@ -974,6 +985,17 @@ COPY:
     var nextItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'next');
 
 
+    //Adjust for any css transform of the parent
+    var translateY = parseInt($(item.element).css('transform').split(',')[5]);
+    //will return as "NaN" (not a number) if the transform isn't set.
+    console.log(translateY);
+    if(itemParent.activeDropTarget === true && isNaN(translateY) === false)
+    {
+      //get the tranform:translateY value, which may be negative and add it to the childPosition
+      draggedMiddlePosition = draggedMiddlePosition + translateY;
+      draggedTopEdge = draggedTopEdge + translateY;
+      draggedBottomEdge = draggedBottomEdge + translateY;
+    }
 
 
     //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
@@ -1001,7 +1023,7 @@ COPY:
       //exit the top of the droptarget
       //has a special check to see if we changed the height of the drop target, which is set for only one run loop.
       //otherwise, if we don't use "isChangingHeight" we will immediately undo increasing the height by decreasing it here.
-      if(item.isChangingHeight === false && item.activeDropTarget === true && (draggedTopEdge) < item.get('topEdge'))
+      if(item.isChangingHeight === false && item.activeDropTarget === true && (draggedTopEdge - adjustment) < item.get('topEdge'))
       {
         //shrink the drop target
         if(item._height !== item._originalHeight)
@@ -1021,9 +1043,38 @@ COPY:
       //depends of the size of the object being dragged
       if($(this.currentlyDraggedComponent.ghostElement()).outerHeight() <= $(item.element).outerHeight())
       {
+
+        /*
+         *
+         * There is an issue when dragging in from the top into a folder. The coordinates get messed up.
+         *   -Cannot exit the above from the top and switch to regular sorting.
+         *   -If you enter from the bottom it works.
+         *
+         *   Looks like it may be an issue with the Y position of the item.
+         *    -Because the folder moves upwards, all the child items have the wrong y.
+         *        delete this._y;
+         *        this.swapDropTarget === true;
+         *        item.set('_y', $(item.element).offset().top);
+
+         *   FINAL THOUGHT::: issue with position and transformY
+         *
+         *   FINAL, FINAL THOUGHT. Subtract translate Y from values.
+         *
+         */
+
+
+
+         //item.set('_y', $(item.element).offset().top);
+         console.log(item.elementId+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')="+item.get('topEdge')+" $(item.element).offset().top="+$(item.element).offset().top);
+
+         if(draggedTopEdge > item.get('topEdge'))
+         {
+           console.log("opposite is true");
+         }
           ////above top most item
           if (prevItem === false && draggedTopEdge < item.get('topEdge'))
           {
+            console.log("it's true");
             return true;
           }
 
@@ -1032,6 +1083,7 @@ COPY:
           if( prevItem && draggedBottomEdge > prevItem.get('bottomEdge')
               && ( draggedBottomEdge <= item.get('bottomEdge') )
           ){
+            console.log("other one");
             return true;
           }
 
@@ -1107,7 +1159,7 @@ COPY:
       //update only if the height has changed, use parseInt to remove px from value.
       if(item._height !== parseInt($(item.element).css('height')))
       {
-          console.log("changed the height for "+item.elementId);
+          //console.log("changed the height for "+item.elementId);
           //we've initialized the original height on the element first in update(), required for CSS transition to grow the item size.
           item.isChangingHeight = true;
           $(item.element).css({
@@ -1148,6 +1200,7 @@ COPY:
           //increase the position by the height of the dragged component, which includes the margin.
           position += this.currentlyDraggedComponent.get(dimension);
 
+          console.log("yep, still inserting the spacer");
           set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
 
           //set the position of this item
@@ -1157,7 +1210,7 @@ COPY:
           position += get(item, dimension);
 
         } else {
-          //console.log("regular");
+          console.log("regular="+item.elementId);
           //set the position of the item, then increment the next one by the height of this item
           set(item, direction, position);
           set(item, 'hasDragSpacerAbove', false);
