@@ -718,17 +718,6 @@ export default SortableGroupComponent.extend({
 
 
 
-
-    //manage heights
-    //if we are suppose to swap drop targets, and the active drop target is not the sortable-group.
-    if (this.swapDropTarget === true && this.activeDropTargetComponent !== this)
-    {
-      //increase the droptarget height by the height of the dragged component, which includes the margin.
-      //height is changed in the foreach loop
-      this.activeDropTargetComponent._height = this.currentlyDraggedComponent.get('height') + this.activeDropTargetComponent._originalHeight;
-    }
-
-
       //let's trying doing something else on update instead of the usual.
 
       /******************************/
@@ -828,6 +817,7 @@ COPY:
      * So if you drag it to the top, it will be the first item, or second etc.
      */
 
+     console.log('---looping---');
      this.coordinateRecursiveUpdate(sortedItems, position);
 
   },
@@ -852,6 +842,9 @@ COPY:
 
     var i = 0; //for test
     sortedItems.forEach((item, index, sortedItems) => {
+      //reset height changing status on each loop
+      item.isChangingHeight = false;
+
       position = this.updateEachSortItem(item, position, index, sortedItems);
 
       //for test
@@ -983,17 +976,42 @@ COPY:
 
 
 
-    //console.log((item.get('parent') ? index+':nested> '+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" this.currentlyDraggedComponentPosition="+this.currentlyDraggedComponentPosition+"  draggedTopEdge="+draggedTopEdge+"  draggedMiddlePosition="+draggedMiddlePosition+" item.element.offsetTop"+item.element.offsetTop+" item.y"+item.get('y')+" this._itemPosition"+this._itemPosition+" position="+position+" futureposition="+futurePosition+" bottomEdge="+bottomEdge + " item original offset = "+item._originalOffset+" ydrag="+item._ydrag+ " nextItem="+nextItem+" prevItem="+prevItem+" prevItemBottomEdge="+prevItemBottomEdge+" this.activeDropTargetComponent="+this.activeDropTargetComponent);
+    //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
 
 
-    //ISSUE IS that when we compare Y it was it's old position. just used for sorting.
-    //We need to compare POSITION which is it's new position.
+    //if this item is not inside the drop target.
+    if(itemParent !== this.activeDropTargetComponent)
+    {
 
+      //handle exiting DropTargets
+      let adjustment = 5; //exit the drop target a little early
 
-    //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" parent=DropTarget?? "+(itemParent === this.activeDropTargetComponent ? "TRUE" : "FALSE")+" prevItem?="+(prevItem ? "TRUE" : "FALSE")+" draggedTopEdge="+draggedTopEdge+" draggedBottomEdge="+draggedBottomEdge+" item.get('bottomEdge')="+item.get('bottomEdge')+" item.get('topEdge')"+item.get('topEdge'));
+      //drag out of bottom of drop target (exiting)
+      if(item.isChangingHeight === false && prevItem && prevItem.activeDropTarget === true && (draggedBottomEdge + adjustment) > prevItem.get('bottomEdge'))
+      {
+        //shrink the drop target
+        if(prevItem._height !== prevItem._originalHeight)
+        {
+          prevItem._height = prevItem._originalHeight;
+          $(prevItem.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
+        }
+        return true;
+      }
 
-
-    console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
+      //exit the top of the droptarget
+      //has a special check to see if we changed the height of the drop target, which is set for only one run loop.
+      //otherwise, if we don't use "isChangingHeight" we will immediately undo increasing the height by decreasing it here.
+      if(item.isChangingHeight === false && item.activeDropTarget === true && (draggedTopEdge) < item.get('topEdge'))
+      {
+        //shrink the drop target
+        if(item._height !== item._originalHeight)
+        {
+          item._height = item._originalHeight;
+          $(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
+        }
+        return true;
+      }
+    }
 
     //if this item's parent is in the same node as the drop target.
     if(itemParent === this.activeDropTargetComponent)
@@ -1033,7 +1051,7 @@ COPY:
             return true;
           }
 
-
+          //regular drag of a large folder
           if( prevItem && draggedBottomEdge > prevItem.get('bottomEdge')
               && ( draggedTopEdge <= item.get('topEdge') )
           ){
@@ -1047,89 +1065,9 @@ COPY:
           }
 
 
-      }
+      }//end else
+    }//end if(itemParent === this.activeDropTargetComponent)
 
-
-
-
-
-
-      //above top most item
-      if(prevItem === false && draggedTopEdge < item.get('topEdge') && item.get('isDragging') === false)
-      {
-        //console.log("topmost item");
-        //return true;
-      }
-
-      //upwards drag
-      //have to get the properties since they are computed.
-      if( prevItem && item.get('isDragging') === false && prevItem.get('isDragging') === false && (draggedTopEdge < item.get('bottomEdge'))
-          && (draggedTopEdge > prevItem.get('bottomEdge') || prevItem === false)
-      ){
-        //console.log("upwards drag");
-        //return true;
-      }
-
-
-      //depends of the size of the object being dragged
-      if($(this.currentlyDraggedComponent.ghostElement()).outerHeight() <= $(item.element).outerHeight())
-      {
-        //for dragged items that are smaller or equal in size to this item
-
-        //downwards drag
-        //console.log("here");
-        if( prevItem && item.get('isDragging') === false && draggedBottomEdge > prevItem.get('bottomEdge')
-            && ( draggedBottomEdge < item.get('bottomEdge') )
-        ){
-          //console.log("downwards drag small or equal");
-          //return true;
-        }
-      } else {
-        //for dragged items that are larger than this item (eg. big folders going over a small item)
-
-          if( prevItem && item.get('isDragging') === false && prevItem.get('isDragging') === false && draggedBottomEdge > prevItem.get('bottomEdge')
-              && ( draggedTopEdge < item.get('topEdge') )
-          ){
-            //add then what to do to turn it off
-            if(item.get('hasDragSpacerAbove') === true && draggedBottomEdge > item.get('bottomEdge'))
-            {
-              //return false
-            }
-
-            //console.log("downwards drag larger");
-            //return true;
-          }
-
-
-
-
-      }
-
-
-
-      //console.log("same drop scope");
-      //if we are between two objects
-      //if these properties exist
-/*
-      if((prevItem && prevItemBottomEdge && item.get('isDragging') === false && prevItem.get('isDragging') === false) && draggedMiddlePosition > prevItemBottomEdge && draggedMiddlePosition < item.get('y'))
-      {
-        console.log("did the move");
-        return true;
-      }
-
-      //top most item
-      if(prevItem === false && draggedTopPosition < item.get('y') && item.get('isDragging') === false)
-      {
-        return true;
-      }
-
-*/
-      //console.log("matched makeSpacerForDraggedObject="+index);
-      return false;
-      //return true;
-    }
-
-    //console.log("failed makeSpacerForDraggedObject on index = "+index);
     return false;
   },
 
@@ -1147,10 +1085,17 @@ COPY:
       dimension = 'height';
     }
 
+    //manage heights
+    //if we are moving the item into a new drop target.
+    //if this item is the drop target, time to do some adjustments!
+    if (this.swapDropTarget === true && item.activeDropTarget === true)
+    {
+      //increase the droptarget height by the height of the dragged component, which includes the margin.
+      item._height = this.currentlyDraggedComponent.get('height') + item._originalHeight;
+    }
+
     if(item._height !== item._originalHeight)
     {
-      //console.log(item.elementId + " height has changed _height="+item._height+" original="+item._originalHeight);
-
       //if this item's droptarget status is false, or the known group drop target doesn't match
       if(item.activeDropTarget === false || this.activeDropTargetComponent !== item)
       {
@@ -1162,7 +1107,9 @@ COPY:
       //update only if the height has changed, use parseInt to remove px from value.
       if(item._height !== parseInt($(item.element).css('height')))
       {
+          console.log("changed the height for "+item.elementId);
           //we've initialized the original height on the element first in update(), required for CSS transition to grow the item size.
+          item.isChangingHeight = true;
           $(item.element).css({
             height: `${item._height}px`
           });

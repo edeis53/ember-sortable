@@ -46,6 +46,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //save the height before we scale it to add items.
     _originalHeight: null,
     _height: null, //current height to render too.
+    isChangingHeight: false, //track if the item is currently undergoing a height change.
 
 
     //keep track if this object has the dragSpacer above it. Useful for on/off states.
