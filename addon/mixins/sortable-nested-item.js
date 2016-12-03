@@ -332,7 +332,6 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       this._cancelStartDragListener = () => {
         $(window).off('mousemove touchmove', this._startDragListener);
-        this._tellGroup('destroyGhost'); //ED
       };
 
       /**
@@ -593,11 +592,13 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       this._tellGroup('setCurrentlyDropping', true); //ED let the group know the state for easy checking
 
-      this._tellGroup('destroyGhost'); //ED
+      //this._tellGroup('destroyGhost'); //ED
 
-      //convert the drag coordinates to actual coordinates
+      //convert the drag coordinates to actual coordinates to update the item's position.
       this._y = this._ydrag;
       this._x = this._xdrag;
+
+      this._tellGroup('dropUpdate'); //destroyGhost as well
 
       //update the sort order of the group for the last time. Doesn't do anything different that when we are dragging. Works the same.
 

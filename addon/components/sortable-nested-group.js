@@ -101,7 +101,6 @@ export default SortableGroupComponent.extend({
       $( this.currentlyDraggedComponent.element ).css('visibility','visible');
       $( "#"+this.currentlyDraggedComponent.ghostId ).remove();
       this.currentlyDraggedComponent.ghostId = null;
-
     }
 
   },
@@ -1193,7 +1192,8 @@ COPY:
      */
 
      //skip the dragged item
-     if (!get(item, 'isDragging')) {
+     //update only during the dragging state.
+     if (!get(item, 'isDragging') && this.currentlyDropping === false) {
 
         //adjust the position of every element, including the dragged object.
         if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
@@ -1218,6 +1218,11 @@ COPY:
           set(item, 'hasDragSpacerAbove', false);
           position += get(item, dimension);
         }
+    } else if (this.currentlyDropping === true){
+      //perform update during drop
+      set(item, direction, position);
+      set(item, 'hasDragSpacerAbove', false);
+      position += get(item, dimension);
     }
 
 
@@ -1450,8 +1455,7 @@ items.forEach((component, index) => {
       //add the model to parent model if applicable
       this.addChildModel(this.currentlyDraggedComponent);
 
-      //move the draggedComponent to its correct location in the dom
-      //$('#'+this.currentlyDraggedComponent.get('elementId')).detach().appendTo('#'+dropTarget.get('elementId'));
+
 
       //maybe now I need to reset the offset.top! or
 
@@ -1478,6 +1482,23 @@ items.forEach((component, index) => {
 
 
     },
+
+
+
+  dropUpdate() {
+    //move the draggedComponent to its correct location in the dom
+    //$(this.currentlyDraggedComponent.get('element')).detach().appendTo(this.dropTarget.get('element'));
+
+    //set y is scheduled for the next render loop.
+    this.currentlyDraggedComponent.set('y', this.currentlyDraggedComponent._ydrag);
+
+    this.update();
+
+    run.scheduleOnce('render', this, 'destroyGhost');
+
+    //this.update();
+
+  },
 
   /**
     @method commit
@@ -1520,13 +1541,13 @@ items.forEach((component, index) => {
         {
           //swapping to a folder
           var itemParent = this.currentlyDraggedComponent.get('parent');
-          console.log("swapping to a folder");
+          //console.log("swapping to a folder");
 
           //Adjust for any css transform of the parent
           var translateY = parseInt($(itemParent.element).css('transform').split(',')[5]);
           if(itemParent.activeDropTarget === true && isNaN(translateY) === false)
           {
-            console.log("condition is true");
+            //console.log("condition is true");
             //modify the position by the translate value.
             this.currentlyDraggedComponent._y = this.currentlyDraggedComponent._y - translateY;
             /*
@@ -1539,7 +1560,7 @@ items.forEach((component, index) => {
         } else {
           //swapping to the root node
           //var itemParent = this;
-          console.log("swapping to root node");
+          //console.log("swapping to root node");
         }
 
 
