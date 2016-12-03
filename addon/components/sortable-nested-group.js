@@ -817,7 +817,7 @@ COPY:
      * So if you drag it to the top, it will be the first item, or second etc.
      */
 
-     console.log('---looping---');
+     //console.log('---looping---');
      this.coordinateRecursiveUpdate(sortedItems, position);
 
   },
@@ -840,7 +840,7 @@ COPY:
 
   coordinateRecursiveUpdate(sortedItems, position) {
 
-    console.log("recursive, using this position="+position);
+    //console.log("recursive, using this position="+position);
 
     var i = 0; //for test
     sortedItems.forEach((item, index, sortedItems) => {
@@ -986,15 +986,15 @@ COPY:
 
 
     //Adjust for any css transform of the parent
-    var translateY = parseInt($(item.element).css('transform').split(',')[5]);
+    var translateY = parseInt($(itemParent.element).css('transform').split(',')[5]);
     //will return as "NaN" (not a number) if the transform isn't set.
-    console.log(translateY);
-    if(itemParent.activeDropTarget === true && isNaN(translateY) === false)
+    //console.log(translateY);
+    if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN(translateY) === false)
     {
       //get the tranform:translateY value, which may be negative and add it to the childPosition
-      draggedMiddlePosition = draggedMiddlePosition + translateY;
-      draggedTopEdge = draggedTopEdge + translateY;
-      draggedBottomEdge = draggedBottomEdge + translateY;
+      draggedMiddlePosition = draggedMiddlePosition - translateY;
+      draggedTopEdge = draggedTopEdge - translateY;
+      draggedBottomEdge = draggedBottomEdge - translateY;
     }
 
 
@@ -1044,6 +1044,8 @@ COPY:
       if($(this.currentlyDraggedComponent.ghostElement()).outerHeight() <= $(item.element).outerHeight())
       {
 
+        //for small or regular sized items
+
         /*
          *
          * There is an issue when dragging in from the top into a folder. The coordinates get messed up.
@@ -1065,16 +1067,16 @@ COPY:
 
 
          //item.set('_y', $(item.element).offset().top);
-         console.log(item.elementId+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')="+item.get('topEdge')+" $(item.element).offset().top="+$(item.element).offset().top);
+         //console.log(item.elementId+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')="+item.get('topEdge')+" $(item.element).offset().top="+$(item.element).offset().top);
 
          if(draggedTopEdge > item.get('topEdge'))
          {
-           console.log("opposite is true");
+          // console.log("opposite is true");
          }
           ////above top most item
           if (prevItem === false && draggedTopEdge < item.get('topEdge'))
           {
-            console.log("it's true");
+            //console.log("it's true");
             return true;
           }
 
@@ -1083,7 +1085,7 @@ COPY:
           if( prevItem && draggedBottomEdge > prevItem.get('bottomEdge')
               && ( draggedBottomEdge <= item.get('bottomEdge') )
           ){
-            console.log("other one");
+            //console.log("other one");
             return true;
           }
 
@@ -1200,7 +1202,7 @@ COPY:
           //increase the position by the height of the dragged component, which includes the margin.
           position += this.currentlyDraggedComponent.get(dimension);
 
-          console.log("yep, still inserting the spacer");
+          //console.log("yep, still inserting the spacer");
           set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
 
           //set the position of this item
@@ -1210,7 +1212,7 @@ COPY:
           position += get(item, dimension);
 
         } else {
-          console.log("regular="+item.elementId);
+          //console.log("regular="+item.elementId);
           //set the position of the item, then increment the next one by the height of this item
           set(item, direction, position);
           set(item, 'hasDragSpacerAbove', false);
@@ -1491,15 +1493,15 @@ items.forEach((component, index) => {
 
         console.log("item tree before drop (update)");
         this.get('sortedItems').forEach(item => {
-          console.log(item.elementId+" y="+item.get('y'));
+          console.log(item.elementId+" y="+item.get('y')+" offset="+item.element.offsetTop+( item.get('wasDropped')? " is dropping": ''));
           //console.log(item);
             if(item.get('children')){
                   item.get('children').forEach(child => {
-                    console.log(item.elementId+child.elementId+" y="+child.get('y'));
+                    console.log(item.elementId+child.elementId+" y="+child.get('y')+" offset="+child.element.offsetTop+( child.get('wasDropped')? " is dropping": ''));
                     //console.log(child);
                       if(child.get('children')){
                             child.get('children').forEach(child2 => {
-                              console.log(item.elementId+child.elementId+child2.elementId+" y="+child2.get('y'));
+                              console.log(item.elementId+child.elementId+child2.elementId+" y="+child2.get('y')+" offset="+child2.element.offsetTop+( child2.get('wasDropped')? " is dropping": ''));
                               //console.log(child2);
                             });
                       }
@@ -1512,14 +1514,58 @@ items.forEach((component, index) => {
         this.swap(this.dropTarget);
 
 
+        //adjust the drop y_pos if translateY is involved.
+
+        if(this.currentlyDraggedComponent.get('parent') !== null)
+        {
+          //swapping to a folder
+          var itemParent = this.currentlyDraggedComponent.get('parent');
+          console.log("swapping to a folder");
+
+          //Adjust for any css transform of the parent
+          var translateY = parseInt($(itemParent.element).css('transform').split(',')[5]);
+          if(itemParent.activeDropTarget === true && isNaN(translateY) === false)
+          {
+            console.log("condition is true");
+            //modify the position by the translate value.
+            this.currentlyDraggedComponent._y = this.currentlyDraggedComponent._y - translateY;
+            /*
+            //get the tranform:translateY value, which may be negative and add it to the childPosition
+            draggedMiddlePosition = draggedMiddlePosition - translateY;
+            draggedTopEdge = draggedTopEdge - translateY;
+            draggedBottomEdge = draggedBottomEdge - translateY;
+            */
+          }
+        } else {
+          //swapping to the root node
+          //var itemParent = this;
+          console.log("swapping to root node");
+        }
+
+
+/*
+//Adjust for any css transform of the parent
+var translateY = parseInt($(itemParent.element).css('transform').split(',')[5]);
+//will return as "NaN" (not a number) if the transform isn't set.
+console.log(translateY);
+if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN(translateY) === false)
+{
+  //get the tranform:translateY value, which may be negative and add it to the childPosition
+  draggedMiddlePosition = draggedMiddlePosition - translateY;
+  draggedTopEdge = draggedTopEdge - translateY;
+  draggedBottomEdge = draggedBottomEdge - translateY;
+}
+
+*/
+
 
         //set the private _y property directly, as settig y on it's own triggers the CSS transform, which isn't what we need.
         //http://stackoverflow.com/questions/4249648/jquery-get-mouse-position-within-an-element
-
         console.log(this.currentlyDraggedComponent.get('height'));
         //i don't know why, but if swapping into root, the yPosition needs to have the height of the dragged element to it.
         let yPosInsideElement = (this === this.dropTarget ? this.currentlyDraggedComponent.get('height') : 0) + this.get('currentMousePosition').y - this.dropTarget.get('element.offsetTop');
-        this.currentlyDraggedComponent.set('_y', yPosInsideElement);
+        //this.currentlyDraggedComponent.set('_y', yPosInsideElement);
+
       }
 
       /*  TO DO
@@ -1594,15 +1640,15 @@ items.forEach((component, index) => {
 
         console.log("item tree after drop (update)");
         this.get('sortedItems').forEach(item => {
-          console.log(item.elementId+" y="+item.get('y')+" offset="+item.element.offsetTop);
+          console.log(item.elementId+" y="+item.get('y')+" offset="+item.element.offsetTop+( item.get('wasDropped')? " is dropping": ''));
           //console.log(item);
             if(item.get('children')){
                   item.get('children').forEach(child => {
-                    console.log(item.elementId+child.elementId+" y="+child.get('y')+" offset="+child.element.offsetTop);
+                    console.log(item.elementId+child.elementId+" y="+child.get('y')+" offset="+child.element.offsetTop+( child.get('wasDropped')? " is dropping": ''));
                     //console.log(child);
                       if(child.get('children')){
                             child.get('children').forEach(child2 => {
-                              console.log(item.elementId+child.elementId+child2.elementId+" y="+child2.get('y'));
+                              console.log(item.elementId+child.elementId+child2.elementId+" y="+child2.get('y')+" offset="+child2.element.offsetTop+( child2.get('wasDropped')? " is dropping": ''));
                               //console.log(child2);
                             });
                       }
