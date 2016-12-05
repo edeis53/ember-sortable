@@ -17,6 +17,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
   //https://guides.emberjs.com/v2.9.0/components/customizing-a-components-element/#toc_customizing-the-element-s-class
   classNameBindings: ['hasChildren:sortable-has-children'],
 
+  //add the ghost class to the hidden dragged component. Prevents flickering between showing the ghost and hiding the dragged component.
+  classNameBindings: ['isDragging:ghost'],
+
     /**
       True if the item is currently being dragged.
       @property isDragging
@@ -332,6 +335,14 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       this._cancelStartDragListener = () => {
         $(window).off('mousemove touchmove', this._startDragListener);
+
+        //on run if not dragging.
+        //if dragging, we need to destroyGhost during drop.
+        if(this.isDropping === false && this.isDragging !== true)
+        {
+          this._tellGroup('destroyGhost'); //ED. If the user clicks, but then doesn't drag.
+        }
+
       };
 
       /**

@@ -67,8 +67,42 @@ export default SortableGroupComponent.extend({
   },
 
   didInsertElement() {
-    //See ghost
+    //Required for ghost
     $( this.element ).css('position', 'relative');
+
+    //init
+    this.setCssTransitionDuration();
+  },
+
+  cssTransitionDuration: 0,
+
+  //grab the transition-duration from our style sheets
+  //http://stackoverflow.com/questions/10958869/jquery-get-css-properties-values-for-a-not-yet-applied-class
+  setCssTransitionDuration(){
+    var inspector = $("<div>").css('display', 'none').addClass('sortable-item');
+    $("body").append(inspector); // add to DOM, in order to read the CSS property
+    try {
+      this.cssTransitionDuration = this.getCssTransitionDuration(inspector);
+    } finally {
+      inspector.remove(); // and remove from DOM
+    }
+  },
+
+  getCssTransitionDuration(element) {
+
+    // check the main transition duration property
+    if(element.css('transition-duration')) {
+      return Math.round(parseFloat(element.css('transition-duration')) * 1000);
+    }
+    else {
+      // check the vendor transition duration properties
+      if(element.css('-webkit-transtion-duration')) return Math.round(parseFloat(element.css('-webkit-transtion-duration')) * 1000);
+      if(element.css('-moz-transtion-duration')) return Math.round(parseFloat(element.css('-moz-transtion-duration')) * 1000);
+      if(element.css('-ms-transtion-duration')) return Math.round(parseFloat(element.css('-ms-transtion-duration')) * 1000);
+      if(element.css('-o-transtion-duration')) return Math.round(parseFloat(element.css('-ms-transtion-duration')) * 1000);
+    }
+    // if we're here, then no transition duration was found, return 0
+    return 0;
   },
 
   createGhost(){
@@ -83,22 +117,29 @@ export default SortableGroupComponent.extend({
 
 
 
-
-      this.currentlyDraggedComponent.ghostId = "sortable-ghost-"+this.currentlyDraggedComponent.get('model.id');
+        this.currentlyDraggedComponent.ghostId = "sortable-ghost-"+this.currentlyDraggedComponent.get('model.id');
 
         //create the ghost object
-        $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; background:purple; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000;").addClass('is-dragging').appendTo( this.element );
+        $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000;").addClass('is-dragging ghost').appendTo( this.element);
+
+        //change the opacity of the original object
+        $( this.currentlyDraggedComponent.element ).css('visibility','hidden');
 
 
-    //change the opacity of the original object
-    $( this.currentlyDraggedComponent.element ).css('visibility','hidden');
+
   },
 
 
   destroyGhost(){
     if(this.currentlyDraggedComponent)
     {
-      $( this.currentlyDraggedComponent.element ).css('visibility','visible');
+      //if we aren't swapping drop target, show the draggedcomponent now that ghost element is going to be removed.
+      //for swapped targets, we don't display it because it results in flickering. the swap function takes care of displaying it properly as it creates the new elements, etc.
+      if(this.swapDropTarget === false)
+      {
+        $( this.currentlyDraggedComponent.element ).css('visibility','visible');
+      }
+
       $( "#"+this.currentlyDraggedComponent.ghostId ).remove();
       this.currentlyDraggedComponent.ghostId = null;
     }
@@ -789,7 +830,7 @@ COPY:
              --If the sortable-item is being dragged, Y position is: it's original this.element.offsetTop + or - the distance the mouse moved
              --Once this sorting command is run, the objects are in perfect order.
      **/
-     let sortedItems = this.get('sortedItems'); //includes sorting of children.
+     var sortedItems = this.get('sortedItems'); //includes sorting of children.
 
 
     /* Cached position of the first sortable-item in group. Value never changes.
@@ -799,7 +840,7 @@ COPY:
         this._tellGroup('prepare');, which then gets this.get('itemPosition');
            See step # 015
     */
-    let position = this._itemPosition;
+    var position = this._itemPosition;
 
     // Just in case we haven’t called prepare first.
     if (position === undefined) {
@@ -816,8 +857,28 @@ COPY:
      * So if you drag it to the top, it will be the first item, or second etc.
      */
 
+     console.log("old drop target");
+     console.log(this.dropTarget);
+
      //console.log('---looping---');
      this.coordinateRecursiveUpdate(sortedItems, position);
+
+
+     //schedule one more update after the css transitions are complete
+     console.log(this.cssTransitionDuration);
+     run.later(this, () => {
+       if(this.currentlyDraggedComponent !== null && this.currentlyDraggedComponent.isDragging === true)
+       {
+          //update the drop target after completion, because if we've made a space above a folder, while dragging out of the folder, the folder may still be the drop target, but it should get updated to root.
+          //this.dropTarget = this.findDropTarget();
+
+         //update once more.
+         //this.coordinateRecursiveUpdate(sortedItems, position);
+         //this.dropTarget = this.findDropTarget();
+       }
+     }, this.cssTransitionDuration * 2.5); //125ms timeout, this should be the same as your CSS transitions
+
+
 
   },
 
@@ -1300,6 +1361,24 @@ COPY:
     return position;
   },
 
+  /**
+    @method _waitForTransition
+    @private
+    @return Promise
+  */
+  _waitForTransition(item) {
+    return new Promise(resolve => {
+      run.next(() => {
+        let duration = 0;
+
+        if (item.get('isAnimated')) {
+          duration = item.get('transitionDuration');
+        }
+
+        run.later(this, resolve, duration);
+      });
+    });
+  },
 
   //search for the dropped item
   findDroppedItem(items) {
@@ -1484,16 +1563,22 @@ items.forEach((component, index) => {
     },
 
 
-
+  //update the items, so there is no flicker. Everything is in the correct position.
   dropUpdate() {
     //move the draggedComponent to its correct location in the dom
     //$(this.currentlyDraggedComponent.get('element')).detach().appendTo(this.dropTarget.get('element'));
 
-    //set y is scheduled for the next render loop.
-    this.currentlyDraggedComponent.set('y', this.currentlyDraggedComponent._ydrag);
+    //update positions of non-swapped items
+    if(this.swapDropTarget !== true)
+    {
+      //rerender the items in sort order.
+      //dragged item should be invisible still.
+      //ghost is visible
+      this.update();
+    }
 
-    this.update();
-
+    //dragged item is shown
+    //ghost is removed.
     run.scheduleOnce('render', this, 'destroyGhost');
 
     //this.update();
