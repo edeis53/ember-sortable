@@ -415,8 +415,6 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //where is the top?
     scrollTopOffsetElement: null,
 
-
-
       _scrollOnEdges(drag) {
         let groupDirection = this.get('group.direction');
         let $element = $(this.ghostElement()); //track the positiong of the ghost element
@@ -479,9 +477,20 @@ export default Ember.Mixin.create(SortableItemMixin, {
             delta = leadingEdge - scrollContainer[leadingEdgeKey];
           }
 
+          var scrolledToBottom = false;
+          if(($(window).scrollTop() + window.innerHeight) >= $(document).height()) {
+            //have to use window.innerHeight instead of $(window).height() to work on iOS.
+            //tried a variety of solutions.
+            //http://stackoverflow.com/questions/8220267/jquery-detect-scroll-at-bottom
+            //http://stackoverflow.com/questions/11172917/jquery-detect-bottom-of-page-on-mobile-safari-ios
+              //console.log("at the bottom");
+              scrolledToBottom = true;
+          }
+
           //ED only run if dragging and not dropping.
           //wierd bug where it was scrolling a small amountwhile dropping.
-          if (delta !== 0 && this.isDragging === true && this.isDropping === false) {
+          //Also, don't scroll if at the top or botom.
+          if (((scrolledToBottom === false && delta > 0) || (delta < 0 && $(window).scrollTop() > 0)) &&  delta !== 0 && this.isDragging === true && this.isDropping === false) {
             let speed = this.get('maxScrollSpeed');
             delta = Math.min(Math.max(delta, -1 * speed), speed);
 
