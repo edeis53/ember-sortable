@@ -15,10 +15,9 @@ const a = A;
 //extend the original sortable-item-mixin and override methods
 export default Ember.Mixin.create(SortableItemMixin, {
   //https://guides.emberjs.com/v2.9.0/components/customizing-a-components-element/#toc_customizing-the-element-s-class
-  classNameBindings: ['hasChildren:sortable-has-children'],
-
+  classNameBindings: ['hasChildren:sortable-has-children','isDragging:ghost'],
   //add the ghost class to the hidden dragged component. Prevents flickering between showing the ghost and hiding the dragged component.
-  classNameBindings: ['isDragging:ghost'],
+
 
     /**
       True if the item is currently being dragged.

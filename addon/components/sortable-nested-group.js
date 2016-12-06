@@ -123,7 +123,10 @@ export default SortableGroupComponent.extend({
         $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000;").addClass('is-dragging ghost').appendTo( this.element);
 
         //change the opacity of the original object
-        $( this.currentlyDraggedComponent.element ).css('visibility','hidden');
+        //switched to opacity instead of visibility, because if children are visible, they will still show.
+        //opacity of parent applies to children.
+        //also tried show/hide, but that breaks the update/positioning loop, as each item needs a height in the dom.
+        $( this.currentlyDraggedComponent.element ).css('opacity',0);
 
 
 
@@ -137,7 +140,7 @@ export default SortableGroupComponent.extend({
       //for swapped targets, we don't display it because it results in flickering. the swap function takes care of displaying it properly as it creates the new elements, etc.
       if(this.swapDropTarget === false)
       {
-        $( this.currentlyDraggedComponent.element ).css('visibility','visible');
+        $( this.currentlyDraggedComponent.element ).css('opacity',1);
       }
 
       $( "#"+this.currentlyDraggedComponent.ghostId ).remove();
@@ -857,20 +860,16 @@ COPY:
      * So if you drag it to the top, it will be the first item, or second etc.
      */
 
-     console.log("old drop target");
-     console.log(this.dropTarget);
-
      //console.log('---looping---');
      this.coordinateRecursiveUpdate(sortedItems, position);
 
 
      //schedule one more update after the css transitions are complete
-     console.log(this.cssTransitionDuration);
      run.later(this, () => {
        if(this.currentlyDraggedComponent !== null && this.currentlyDraggedComponent.isDragging === true)
        {
           //update the drop target after completion, because if we've made a space above a folder, while dragging out of the folder, the folder may still be the drop target, but it should get updated to root.
-          //this.dropTarget = this.findDropTarget();
+          this.dropTarget = this.findDropTarget();
 
          //update once more.
          //this.coordinateRecursiveUpdate(sortedItems, position);
