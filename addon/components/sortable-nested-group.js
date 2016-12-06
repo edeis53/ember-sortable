@@ -121,6 +121,13 @@ export default SortableGroupComponent.extend({
 
         //create the ghost object
         $( this.currentlyDraggedComponent.element ).clone().attr("id", this.currentlyDraggedComponent.ghostId).attr("style","position:absolute; width:"+width+"; height:"+height+"; top:"+top+"px; z-index:5000;").addClass('is-dragging ghost').appendTo( this.element);
+        /*
+        <div id="sortable-ghost-87" class="ui segment ember-view sortable-item is-dragging ghost" style="position:absolute; width:457px; height:33px; top:1551px; z-index:5000;">
+            <div class="menu-title">Title: 87-Item #15</div>
+            <span class="handle">↕</span>
+        </div>
+        */
+
 
         //change the opacity of the original object
         //switched to opacity instead of visibility, because if children are visible, they will still show.

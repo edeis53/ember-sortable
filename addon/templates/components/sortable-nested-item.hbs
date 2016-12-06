@@ -13,7 +13,7 @@
 --}}
 
 {{#each model.children as |child|}}
-  {{#sortable-nested-item class=class parent=this model=child group=group handle=handle as |EmberComponentItem|}}
+  {{#sortable-nested-item class=class parent=this model=child group=group scrollTopOffsetElement=scrollTopOffsetElement scrollThreshold=scrollThreshold maxScrollSpeed=maxScrollSpeed handle=handle as |EmberComponentItem|}}
     <div class="menu-title">Title: {{child.id}}-{{child.title}}</div>
     <span class="handle">&varr;</span>
   {{/sortable-nested-item}}

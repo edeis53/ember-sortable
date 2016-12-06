@@ -400,9 +400,113 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       //Handle for autoscrolling
       //DISABLED
-      //this._scrollOnEdges(drag);
+      this._scrollOnEdges(drag);
     },
 
+    /**
+      The maximum scroll speed when dragging element.
+      @property maxScrollSpeed
+      @default 20
+     */
+    maxScrollSpeed: 5,
+
+    //pixel threshold to the bottom or top edge to start scrolling
+    scrollThreshold: 50,
+    //where is the top?
+    scrollTopOffsetElement: null,
+
+
+
+      _scrollOnEdges(drag) {
+        let groupDirection = this.get('group.direction');
+        let $element = $(this.ghostElement()); //track the positiong of the ghost element
+
+        //scroll thresholds
+        var scrollThreshold = this.scrollThreshold;
+        var topThreshold = ( this.scrollTopOffsetElement ? $(this.scrollTopOffsetElement).offset().top + scrollThreshold : 0);
+
+        let scrollContainer = new ScrollContainer(scrollParent($element)[0]);
+        let itemContainer = {
+          width: $element.width(),
+          height: $element.height(),
+          get left() {
+            return $element.offset().left;
+          },
+          get right() {
+            return this.left + this.width;
+          },
+          get top() {
+            return $element.offset().top - topThreshold;
+          },
+          get bottom() {
+            //have to remove the top adjustment
+            return this.top + topThreshold + this.height + scrollThreshold;
+          }
+        };
+
+        let leadingEdgeKey, trailingEdgeKey, scrollKey, pageKey;
+        if (groupDirection === 'x') {
+          leadingEdgeKey = 'left';
+          trailingEdgeKey = 'right';
+          scrollKey = 'scrollLeft';
+          pageKey = 'pageX';
+        } else {
+          leadingEdgeKey = 'top';
+          trailingEdgeKey = 'bottom';
+          scrollKey = 'scrollTop';
+          pageKey = 'pageY';
+        }
+
+        let createFakeEvent = () => {
+          if (this._pageX == null && this._pageY == null) { return; }
+          return {
+            pageX: this._pageX,
+            pageY: this._pageY
+          };
+        };
+
+        // Set a trigger padding that will start scrolling
+        // the box when the item reaches within padding pixels
+        // of the edge of the scroll container.
+        let checkScrollBounds = () => {
+          let leadingEdge = itemContainer[leadingEdgeKey];
+          let trailingEdge = itemContainer[trailingEdgeKey];
+          let scroll = scrollContainer[scrollKey]();
+          let delta = 0;
+          if (trailingEdge >= scrollContainer[trailingEdgeKey]) {
+            delta = trailingEdge - scrollContainer[trailingEdgeKey];
+          } else if (leadingEdge <= scrollContainer[leadingEdgeKey]) {
+            delta = leadingEdge - scrollContainer[leadingEdgeKey];
+          }
+
+          //ED only run if dragging and not dropping.
+          //wierd bug where it was scrolling a small amountwhile dropping.
+          if (delta !== 0 && this.isDragging === true && this.isDropping === false) {
+            let speed = this.get('maxScrollSpeed');
+            delta = Math.min(Math.max(delta, -1 * speed), speed);
+
+            delta = scrollContainer[scrollKey](scroll + delta) - scroll;
+
+            //bug is here with the fake drag event.
+            //should be fixed with the above conditions checking the drag/drop state.
+              let event = createFakeEvent();
+              if (event) {
+                if (scrollContainer.isWindow) {
+                  event[pageKey] += delta;
+                }
+                run(() => drag(event));
+              }
+
+          }
+          if (this.get('isDragging') === true) {
+            requestAnimationFrame(checkScrollBounds);
+          }
+        };
+
+        if (!Ember.testing) {
+          requestAnimationFrame(checkScrollBounds);
+        }
+      },
 
 
     /**
@@ -501,6 +605,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
               --dimension is just the value of pixels to move.
     **/
     _drag(dimension) {
+      //try scrolling
+      //this.scrollMe();
+
+
       //The frequency with which the group is informed that an update is required.
       let updateInterval = this.get('updateInterval');
 
