@@ -1338,6 +1338,12 @@ COPY:
     if(item.swapFromFolder === true)
     {
       position = position + this.currentlyDraggedComponent.get('height');
+
+      //plus adjust for margin difference between folders and regular items
+      if($(this.currentlyDraggedComponent.element).css('margin-bottom') !== $(item.element).css('margin-bottom'))
+      {
+        position += parseFloat($(item.element).css('margin-bottom'));
+      }
     }
 
     // add additional spacing around active element
@@ -1609,6 +1615,9 @@ items.forEach((component, index) => {
   dropUpdate() {
     //move the draggedComponent to its correct location in the dom
     //$(this.currentlyDraggedComponent.get('element')).detach().appendTo(this.dropTarget.get('element'));
+
+    //check droptarget one last time, as items shrinking in height, etc. may have changed since update was last called
+    this.isSwap();
 
     //update positions of non-swapped items
     if(this.swapDropTarget !== true)
