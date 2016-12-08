@@ -1232,14 +1232,13 @@ COPY:
     //if this item is the drop target, time to do some adjustments!
     if (this.swapDropTarget === true && item.activeDropTarget === true)
     {
-      console.log("this is happening as well");
       //increase the droptarget height by the height of the dragged component, which includes the margin.
       item._height = this.currentlyDraggedComponent.get('height') + item._originalHeight;
     }
 
+    //for moving into folders from outside element
     if(item._height !== item._originalHeight && item.swapFromFolder === false)
     {
-      console.log("this is happening");
       //if this item's droptarget status is false, or the known group drop target doesn't match
       if(item.activeDropTarget === false || this.activeDropTargetComponent !== item)
       {
@@ -1257,9 +1256,15 @@ COPY:
           $(item.element).css({
             height: `${item._height}px`
           });
-
       }
+    }
 
+    //reset dragging back into folder for child items
+    if(this.swapDropTarget === false && item.swapFromFolder === true)
+    {
+      item._height = item._height + this.currentlyDraggedComponent.get('height');
+      $(item.element).css('height', 'auto');
+      item.swapFromFolder = false;
     }
 
 
@@ -1293,7 +1298,7 @@ COPY:
           //increase the position by the height of the dragged component, which includes the margin.
           position += this.currentlyDraggedComponent.get(dimension);
 
-          //console.log("yep, still inserting the spacer");
+          console.log("yep, still inserting the spacer");
           set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
 
           //set the position of this item
@@ -1329,7 +1334,7 @@ COPY:
     }
 
 
-    //if
+    //if we've shrunk the folder size, we need to increase position to compensate
     if(item.swapFromFolder === true)
     {
       position = position + this.currentlyDraggedComponent.get('height');
