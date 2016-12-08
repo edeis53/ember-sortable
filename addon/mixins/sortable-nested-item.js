@@ -50,6 +50,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
     _height: null, //current height to render too.
     isChangingHeight: false, //track if the item is currently undergoing a height change.
 
+    //track when moving items out of folders (child model originates inside)
+    //we could also probably use something like: this.currentlyDraggedComponent.get('parent') !== item for our checking, but this seems easier for now.
+    swapFromFolder: false,
 
     //keep track if this object has the dragSpacer above it. Useful for on/off states.
     hasDragSpacerAbove: null,
@@ -777,6 +780,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       //reset height
       this._originalHeight = this._height = $(this.element).outerHeight();
+
+      //reset swap, used for tracking when children are moved out of folders
+      this.swapFromFolder = false;
 
       el.css({ transform: '' });
       el.height(); // Force-apply styles
