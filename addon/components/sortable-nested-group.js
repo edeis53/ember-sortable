@@ -145,7 +145,6 @@ export default SortableGroupComponent.extend({
     {
       //if we aren't swapping drop target, show the draggedcomponent now that ghost element is going to be removed.
       //for swapped targets, we don't display it because it results in flickering. the swap function takes care of displaying it properly as it creates the new elements, etc.
-      console.log("this.swapDropTarget="+this.swapDropTarget);
       if(this.swapDropTarget === false)
       {
         $( this.currentlyDraggedComponent.element ).css('opacity',1);
@@ -1055,9 +1054,10 @@ COPY:
     //Adjust for any css transform of the parent
     var translateY = parseFloat($(itemParent.element).css('transform').split(',')[5]);
     //will return as "NaN" (not a number) if the transform isn't set.
-    //console.log(translateY);
+    //
     if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN(translateY) === false)
     {
+      console.log("item="+item.elementId+"translateY="+translateY);
       //get the tranform:translateY value, which may be negative and add it to the childPosition
       draggedMiddlePosition = draggedMiddlePosition - translateY;
       draggedTopEdge = draggedTopEdge - translateY;
@@ -1085,7 +1085,6 @@ COPY:
         //which has a child model, and is the parent of the dragged object
         if ((prevItem.swapFromFolder === true || prevItem._height === prevItem._originalHeight) && prevItem === this.currentlyDraggedComponent.get('parent'))
         {
-          console.log("we have a problem here");
           prevItem._height = prevItem._originalHeight - this.currentlyDraggedComponent.get('height');
 
           prevItem.swapFromFolder = true;
@@ -1112,7 +1111,6 @@ COPY:
         //shrink the drop target
         if(item._height !== item._originalHeight && item !== this.currentlyDraggedComponent.get('parent'))
         {
-          console.log("7 shrinking");
           item._height = item._originalHeight;
           $(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
         }
@@ -1130,13 +1128,12 @@ COPY:
           //update only if the height has changed, use parseFloat to remove px from value.
           if(item._height !== parseFloat($(item.element).css('height')))
           {
-            console.log("five");
             item.isChangingHeight = true;
             $(item.element).css({
               height: `${item._height}px`
             });
           }
-          console.log("makeSpacerForDraggedObject shrinking the folder:"+item.elementId);
+          //console.log("makeSpacerForDraggedObject shrinking the folder:"+item.elementId);
         }
 
         return true;
@@ -1326,7 +1323,6 @@ COPY:
             position += parseFloat($(item.element).css('margin-bottom'));
           }
 
-          console.log("yep, still inserting the spacer");
           set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
 
           //set the position of this item
@@ -1336,7 +1332,7 @@ COPY:
           position += get(item, dimension);
 
         } else {
-          //console.log("regular="+item.elementId);
+          console.log("regular="+item.elementId);
           //set the position of the item, then increment the next one by the height of this item
           set(item, direction, position);
           set(item, 'hasDragSpacerAbove', false);
@@ -1355,8 +1351,6 @@ COPY:
     //or if this item has a child that is an active drop target
     if(item.swapFromFolder === false && item._height !== item._originalHeight && item._height === parseFloat($(item.element).css('height')) || this.hasChild(item, 'activeDropTarget', '===', true) > 0)
     {
-      console.log("position1: subtracing height of draggedcomponent");
-      //console.log("have child as drop or my height is different");
       //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
       position = position - this.currentlyDraggedComponent.get('height');
     }
@@ -1670,6 +1664,7 @@ items.forEach((component, index) => {
       if(this.swapDropTarget == true)
       {
 
+        /*
         console.log("item tree before drop (update)");
         this.get('sortedItems').forEach(item => {
           console.log(item.elementId+" y="+item.get('y')+" offset="+item.element.offsetTop+( item.get('wasDropped')? " is dropping": ''));
@@ -1688,6 +1683,7 @@ items.forEach((component, index) => {
                   });
             }
         });
+        */
 
         //run swap to move dragged item into this target
         this.swap(this.dropTarget);
@@ -1699,13 +1695,13 @@ items.forEach((component, index) => {
         {
           //swapping to a folder
           var itemParent = this.currentlyDraggedComponent.get('parent');
-          //console.log("swapping to a folder");
+          console.log("swapping to a folder");
 
           //Adjust for any css transform of the parent
           var translateY = parseFloat($(itemParent.element).css('transform').split(',')[5]);
           if(itemParent.activeDropTarget === true && isNaN(translateY) === false)
           {
-            //console.log("condition is true");
+            console.log("condition is true");
             //modify the position by the translate value.
             this.currentlyDraggedComponent._y = this.currentlyDraggedComponent._y - translateY;
             /*
@@ -1797,7 +1793,6 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     //grab the sortable-item component class that was dropped
     let draggedItem = this.findDroppedItem(items);
 
-    console.log("did we find the dragedItem??=="+draggedItem);
     let draggedModel;
 
     //can we find the item that was dropped?
@@ -1811,7 +1806,7 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
 
 
 
-
+/*
         console.log("current mouse position = "+this.get('currentMousePosition').y);
 
         //default this._y = this.element.offsetTop;
@@ -1835,7 +1830,7 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
                   });
             }
         });
-
+*/
         //debugger;
 
 
@@ -1848,7 +1843,7 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     this.deleteChildPositions(items); //recursive delete cached positions of childs.
 
     //reset
-    console.log("drop target on commit="+this.dropTarget.get('elementId'));
+    //console.log("drop target on commit="+this.dropTarget.get('elementId'));
     $(this.dropTarget.get('element')).removeClass('sortable-activeDropTarget');
 
 
