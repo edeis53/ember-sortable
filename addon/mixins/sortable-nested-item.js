@@ -784,7 +784,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
       //reset swap, used for tracking when children are moved out of folders
       this.swapFromFolder = false;
 
-      el.css({ transform: '' });
+      el.css({ transform: '', height: ''  }); //reset height here too, revert from defined height (left over from a swap drop) and change to auto.
       el.height(); // Force-apply styles
     },
 
