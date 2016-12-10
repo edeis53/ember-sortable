@@ -78,6 +78,11 @@ export default SortableGroupComponent.extend({
     //Required for ghost
     $( this.element ).css('position', 'relative');
 
+    //fix for scrolling on iOS, where items below the fold cannot be clicked due to conflict with liquid-fire.
+    //by default, the .liquid-container class has the setting "transform: translateY(0);"
+    $( this.element )
+  .closest( ".liquid-container").css('transform', 'none');
+
     //init
     this.setCssTransitionDuration();
   },
