@@ -87,6 +87,16 @@ export default SortableGroupComponent.extend({
     this.setCssTransitionDuration();
   },
 
+  /**
+    @method willDestroyElement
+              ED: Note, called after route transition is complete, so really, you'd want to call this before the transition in the route.js using willTransition action.
+  */
+  willDestroyElement() {
+    //remove our changes to liquid-fire for the iOS scrolling issue, and prevent any issues with liquid-fire performing.
+    $( this.element )
+  .closest( ".liquid-container").css('transform', '');
+  },
+
   cssTransitionDuration: 0,
 
   //grab the transition-duration from our style sheets
