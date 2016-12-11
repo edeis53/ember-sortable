@@ -87,6 +87,61 @@ export default Ember.Mixin.create(SortableItemMixin, {
     }).volatile(),
 
 
+    changeHeight(value) {
+      //when height is set to auto or not manually defined as px value, it can't be used with transform, because it resets the height to 0 px before doing the transform in Safari if starting from auto. We need to set it to the original height first.
+
+
+      if(value === "auto")
+      {
+        //disable transitions
+        $(this.element).css('transition', 'none');
+
+        //define a minimum height to prevent DOM transitioning from 0px (auto)
+        if(this._originalHeight >= this._height)
+        {
+          $(this.element).css('min-height', this._height);
+        } else {
+          $(this.element).css('min-height', this._originalHeight);
+        }
+
+        //set the height to the current value
+        $(this.element).css( "height", this._height);
+
+        //re-enable transitions
+        $(this.element).css('transition', '');
+
+        //change the height back to original value
+        $(this.element).css( "height", this._originalHeight);
+
+        //set it to auto by removing any custom height stylings
+        $(this.element).css('height', '');
+
+      } else {
+        //value is a number.
+
+        //disable transitions
+        $(this.element).css('transition', 'none');
+
+        //define a minimum height to prevent DOM transitioning from 0px (auto)
+        if(this._originalHeight >= this._height)
+        {
+          $(this.element).css('min-height', this._height);
+        } else {
+          $(this.element).css('min-height', this._originalHeight);
+        }
+
+        //set the height to the original value
+        $(this.element).css( "height", this._originalHeight);
+
+        //re-enable transitions
+        $(this.element).css('transition', '')
+
+        //change the height
+        $(this.element).css( "height", value);
+      }
+
+    },
+
 
     /**
       Horizontal position of the item.
@@ -300,9 +355,19 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       run.schedule('afterRender', () => {
         this._originalHeight = this._height = $(this.element).outerHeight();
+
+        //set a minimum height to prevent flickering in safari.
+        //css height transitions starting from auto end up starting at a height of 0 first!
+        $(this.element).css('min-height', this._height);
+
       });
 
 
+    },
+
+
+    transitionEnd(){
+      console.log("end of transition");
     },
 
     /**

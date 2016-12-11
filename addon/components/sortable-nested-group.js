@@ -37,7 +37,7 @@ export default SortableGroupComponent.extend({
     @type Number
     @default 125
   */
-  updateInterval: 500,
+  updateInterval: 250,  //should be slower than your CSS transition.
 
   //list of allow model types for drop targets
   //define in controller and pass to the component
@@ -63,6 +63,9 @@ export default SortableGroupComponent.extend({
   swapDropTarget: false,
 
   dropTarget: null, //dropTarget
+
+
+  insertedDragSpacer: false,
 
   setCurrentlyDraggedComponent(component){
     this.set('currentlyDraggedComponent', component);
@@ -783,11 +786,14 @@ export default SortableGroupComponent.extend({
 
   **/
   update() {
-
+    console.log("=========== UPDATE LOOP START ======="+Math.floor((Math.random() * 100) + 1));
     this.isSwap();
 
     //what is the position of the currently dragged component within the activeDropTarget area
     this.draggedItemNodePosition();
+
+    //init
+    this.insertedDragSpacer = false;
 
 
 
@@ -905,7 +911,7 @@ COPY:
          //this.coordinateRecursiveUpdate(sortedItems, position);
          //this.dropTarget = this.findDropTarget();
        }
-     }, this.cssTransitionDuration * 2.5); //125ms timeout, this should be the same as your CSS transitions
+     }, this.cssTransitionDuration * 2); //125ms timeout, this should be the same as your CSS transitions
 
 
 
@@ -1101,13 +1107,15 @@ COPY:
         if(prevItem._height !== prevItem._originalHeight && prevItem !== this.currentlyDraggedComponent.get('parent'))
         {
           console.log("chang heigh to auto3 for prevItem="+prevItem.elementId);
+          prevItem.isChangingHeight = true;
           prevItem._height = prevItem._originalHeight;
-          $(prevItem.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
+          prevItem.changeHeight("auto"); //also removed in commit as well (after drop) because it is a current drop target
         }
 
         //shrink the drop target,
         //which has a child model, and is the parent of the dragged object
-        if ((prevItem.swapFromFolder === true || prevItem._height === prevItem._originalHeight) && prevItem === this.currentlyDraggedComponent.get('parent'))
+        //has a small adjustment for exiting (negative), as the folder is smaller when dragging out than dragging in.
+        if ((prevItem.swapFromFolder === true || prevItem._height === prevItem._originalHeight) && prevItem === this.currentlyDraggedComponent.get('parent') && (draggedBottomEdge - adjustment) > prevItem.get('bottomEdge'))
         {
           prevItem._height = prevItem._originalHeight - this.currentlyDraggedComponent.get('height');
 
@@ -1116,12 +1124,13 @@ COPY:
           //update only if the height has changed, use parseFloat to remove px from value.
           if(prevItem._height !== parseFloat($(prevItem.element).css('height')))
           {
-            console.log("changing height 2");
+            console.log("changing height 2 = "+prevItem.elementId);
             prevItem.isChangingHeight = true;
-            $(prevItem.element).css({
-              height: `${prevItem._height}px`
-            });
+            prevItem.changeHeight(prevItem._height);
           }
+        } else {
+          //return false to not trigger the other criterias.
+          return false;
         }
 
 
@@ -1137,8 +1146,9 @@ COPY:
         if(item._height !== item._originalHeight && item !== this.currentlyDraggedComponent.get('parent'))
         {
           console.log("chang heigh to auto1");
+          item.isChangingHeight = true;
           item._height = item._originalHeight;
-          $(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
+          item.changeHeight("auto"); //also removed in commit as well (after drop) because it is a current drop target
         }
 
         //shrink the drop target,
@@ -1151,14 +1161,16 @@ COPY:
 
           item.swapFromFolder = true;
 
+          //manually set that we are changing drop target, so rest of items behave appropriately
+          this.swapDropTarget = true;
+
           //update only if the height has changed, use parseFloat to remove px from value.
           if(item._height !== parseFloat($(item.element).css('height')))
           {
             console.log("changing height3");
+            console.log("changing to: item._height="+item._height);
             item.isChangingHeight = true;
-            $(item.element).css({
-              height: `${item._height}px`
-            });
+            item.changeHeight(item._height);
           }
           //console.log("makeSpacerForDraggedObject shrinking the folder:"+item.elementId);
         }
@@ -1208,7 +1220,7 @@ COPY:
           ////above top most item
           if (prevItem === false && draggedTopEdge < item.get('topEdge'))
           {
-            console.log("others:1");
+            console.log("others:1 for ="+item.elementId);
             return true;
           }
 
@@ -1217,7 +1229,7 @@ COPY:
           if( prevItem && draggedBottomEdge > prevItem.get('bottomEdge')
               && ( draggedBottomEdge <= item.get('bottomEdge') )
           ){
-            console.log("others:2");
+            console.log("others:2 ="+item.elementId);
             return true;
           }
 
@@ -1278,6 +1290,7 @@ COPY:
     {
       //increase the droptarget height by the height of the dragged component, which includes the margin.
       item._height = this.currentlyDraggedComponent.get('height') + item._originalHeight;
+      console.log(" swapping, this is how we are changing the heigh: this.currentlyDraggedComponent.get('height')="+this.currentlyDraggedComponent.get('height')+" item._originalHeight="+item._originalHeight+" total = item._height="+item._height);
     }
 
     //for moving into folders from outside element
@@ -1289,29 +1302,31 @@ COPY:
         console.log("chang heigh to auto2");
         //reset on non-active drop targets
         item._height = item._originalHeight;
-        $(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
+        item.changeHeight("auto"); //also removed in commit as well (after drop) because it is a current drop target
       }
 
       console.log("item._height ="+item._height+" parseFloat($(item.element).css('height'))="+parseFloat($(item.element).css('height')));
       //update only if the height has changed, use parseFloat to remove px from value.
       if(item._height !== parseFloat($(item.element).css('height')))
       {
-          console.log("changed the height for "+item.elementId);
+          console.log("changed the xx height for "+item.elementId);
           //we've initialized the original height on the element first in update(), required for CSS transition to grow the item size.
           item.isChangingHeight = true;
-          $(item.element).css({
-            height: `${item._height}px`
-          });
+          item.changeHeight(item._height);
           //debugger;
       }
     }
 
+
     //reset dragging back into folder for child items
     if(this.swapDropTarget === false && item.swapFromFolder === true)
     {
-      console.log("resetting height to auto");
+      console.log("resetting height to auto ="+item.elementId);
+      console.log("item._height ="+item._height+" parseFloat($(item.element).css('height'))="+parseFloat($(item.element).css('height')));
+
+      console.log("item.get('isAnimated')="+item.get('isAnimated'));
       item._height = item._originalHeight;
-      $(item.element).css('height', 'auto');
+      item.changeHeight("auto");
       item.swapFromFolder = false;
       item.isChangingHeight = true;
     }
@@ -1339,10 +1354,13 @@ COPY:
      //skip the dragged item
      //update only during the dragging state.
      if (!get(item, 'isDragging') && this.currentlyDropping === false) {
-
+       console.log("this.insertedDragSpacer="+this.insertedDragSpacer);
         //adjust the position of every element, including the dragged object.
-        if(this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
+        if(this.insertedDragSpacer === false && this.makeSpacerForDraggedObject(item, position, index, sortedItems, itemParent, dimension))
         {
+          //once the drag spacer is found on first time, stop checking for others.
+          this.insertedDragSpacer = true;
+
           console.log("This object has the drag spacer="+item.elementId);
           //increase the position by the height of the dragged component, which includes the margin.
           position += this.currentlyDraggedComponent.get(dimension);
@@ -1363,7 +1381,16 @@ COPY:
           position += get(item, '_height') + parseFloat($(item.element).css('margin-bottom'));
 
         } else {
-          console.log("regular="+item.elementId+" position="+position);
+                                      //Small fix inserted here. For drag-into then exit folder. When it shrinks, we haven't correctly indentified to insert drag spacer via makeSpacerForDraggedObject, so we do it here.
+                                            var prevItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'prev');
+                                            if(prevItem.isChangingHeight === true && prevItem._height === prevItem._originalHeight)
+                                            {
+                                              console.log("success Here");
+                                              set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
+                                              position = position + (this.currentlyDraggedComponent.get('height'));
+                                            }
+
+          //console.log("regular="+item.elementId+" position="+position);
           //set the position of the item, then increment the next one by the height of this item
           set(item, direction, position);
           set(item, 'hasDragSpacerAbove', false);
@@ -1385,11 +1412,16 @@ COPY:
 
     //if this item is the current drop target, and we've adjusted it's height, remove the corresponding amount from position, because they space has already been inserted into the drop target
     //or if this item has a child that is an active drop target
-    if(item.swapFromFolder === false && item._height !== item._originalHeight && item._height === parseFloat($(item.element).css('height')) || this.hasChild(item, 'activeDropTarget', '===', true) > 0)
+    console.log("--------------");
+    console.log("item.swapFromFolder="+item.swapFromFolder+" item._height="+item._height+" item._originalHeight="+item._originalHeight+" parseFloat($(item.element).css('height'))"+parseFloat($(item.element).css('height')));
+
+    if(item.swapFromFolder === false && (item._height !== item._originalHeight || this.hasChild(item, 'activeDropTarget', '===', true) > 0))
     {
       console.log("gootta do something for "+item.elementId+" position="+position);
       //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
-      position = position - (this.currentlyDraggedComponent.get('height'));
+        position = position - (this.currentlyDraggedComponent.get('height'));
+
+
       console.log("and position again ="+position);
     }
 
@@ -1397,6 +1429,7 @@ COPY:
     //if we've shrunk the folder size, we need to increase position to compensate
     if(item.swapFromFolder === true)
     {
+      console.log("making adjustment 3");
       position = position + this.currentlyDraggedComponent.get('height');
     }
 
@@ -1884,8 +1917,12 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     //console.log("drop target on commit="+this.dropTarget.get('elementId'));
     $(this.dropTarget.get('element')).removeClass('sortable-activeDropTarget');
 
+    //remove height resizing on sortable-items, except group.
+    if(this.dropTarget !== this)
+    {
+      this.dropTarget.changeHeight("auto"); //remove any height resizing
+    }
 
-    $(this.dropTarget.get('element')).css('height', 'auto'); //remove any height resizing
     this.dropTarget = null;
     this.swapDropTarget = false;
     this.set('currentlyDraggedComponent', null);
