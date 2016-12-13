@@ -889,7 +889,7 @@ COPY:
 
 
     //init the heights of the items for css transitions.
-    this.initHeights(sortedItems);
+    //this.initHeights(sortedItems);
 
     /*
      * Position of the dragged item is updated prior to this. It is relative to the actual position in the dom.
@@ -1108,8 +1108,8 @@ COPY:
         {
           console.log("chang heigh to auto3 for prevItem="+prevItem.elementId);
           prevItem.isChangingHeight = true;
-          prevItem._height = prevItem._originalHeight;
           prevItem.changeHeight("auto"); //also removed in commit as well (after drop) because it is a current drop target
+          console.log("CHANGING HEIGHT 8 ="+prevItem.elementId);
         }
 
         //shrink the drop target,
@@ -1127,6 +1127,7 @@ COPY:
             console.log("changing height 2 = "+prevItem.elementId);
             prevItem.isChangingHeight = true;
             prevItem.changeHeight(prevItem._height);
+            console.log("CHANGING HEIGHT 4 ="+prevItem.elementId);
           }
         } else {
           //return false to not trigger the other criterias.
@@ -1147,8 +1148,8 @@ COPY:
         {
           console.log("chang heigh to auto1");
           item.isChangingHeight = true;
-          item._height = item._originalHeight;
           item.changeHeight("auto"); //also removed in commit as well (after drop) because it is a current drop target
+          console.log("CHANGING HEIGHT 5 ="+item.elementId);
         }
 
         //shrink the drop target,
@@ -1171,6 +1172,7 @@ COPY:
             console.log("changing to: item._height="+item._height);
             item.isChangingHeight = true;
             item.changeHeight(item._height);
+            console.log("CHANGING HEIGHT 6 ="+item.elementId);
           }
           //console.log("makeSpacerForDraggedObject shrinking the folder:"+item.elementId);
         }
@@ -1269,57 +1271,6 @@ COPY:
     return false;
   },
 
-
-  adjustParentHeightRecursive(item, newAmount, oldAmount){
-
-    console.log("Does this item have a parent? ="+item.get('parent'));
-    //How much height change?
-    var heightChange = oldAmount - newAmount;
-
-    //Get the parent
-    var parent = item.get('parent');
-
-    //does this item have a parent?
-    if(parent !== null && parent !== undefined)
-    {
-      parent.isChangingHeight = true;
-      parent.changeHeight(heightChange);
-
-      //check if we need to recursively update more parents
-      var recusiveParent = parent.get('parent');
-
-      if(recusiveParent !== null && recusiveParent !== undefined)
-      {
-        //now be recursive.
-        this.adjustParentHeightRecursive(parent, newAmount, oldAmount);
-      }
-
-    }
-
-          //manage heights of nested folders.
-          //
-
-      /*
-
-      hasParent(item, key, value)
-
-
-          console.log("--CREPES--  item="+item.elementId+" this.swapDropTarget"+this.swapDropTarget+" this.hasChild(item, 'swapFromFolder', '===', true)"+this.hasChild(item, 'swapFromFolder', '===', true)+" this.hasChild(item, 'activeDropTarget', '===', true)="+this.hasChild(item, 'activeDropTarget', '===', true));
-          if(this.swapDropTarget === true && this.hasChild(item, 'swapFromFolder', '===', true) === 0 && this.hasChild(item, 'activeDropTarget', '===', true) > 0)
-          {
-            console.log("yes, criteria for item="+item.elementId);
-            //this.hasChild(item, 'activeDropTarget', '===', true)
-
-            item._height = item._originalHeight - this.currentlyDraggedComponent.get('height');
-
-            item.isChangingHeight = true;
-            item.changeHeight(item._height);
-          }
-      */
-
-    //debugger;
-  },
-
   updateEachSortItem(item, position, index, sortedItems) {
     //index is the array index of the items we are looping through
     let dimension;
@@ -1344,7 +1295,6 @@ COPY:
       console.log(" swapping, this is how we are changing the heigh: this.currentlyDraggedComponent.get('height')="+this.currentlyDraggedComponent.get('height')+" item._originalHeight="+item._originalHeight+" total = item._height="+item._height);
     }
 
-
     //for moving into folders from outside element
     if(item._height !== item._originalHeight && item.swapFromFolder === false)
     {
@@ -1353,24 +1303,21 @@ COPY:
       {
         console.log("chang heigh to auto2");
         //reset on non-active drop targets
-        item._height = item._originalHeight;
         item.changeHeight("auto"); //also removed in commit as well (after drop) because it is a current drop target
+        console.log("CHANGING HEIGHT 7 ="+item.elementId);
       }
 
       console.log("item._height ="+item._height+" parseFloat($(item.element).css('height'))="+parseFloat($(item.element).css('height')));
       //update only if the height has changed, use parseFloat to remove px from value.
-      if(item._height !== parseFloat($(item.element).css('height')) && this.hasChild(item, 'swapFromFolder', '===', true) <= 0)
+      if(item.activeDropTarget === true && item._height !== parseFloat($(item.element).css('height')))
       {
           console.log("changed the xx height for "+item.elementId);
-
-          //do we need to adjust the height of the parent?? eg. is this a nested folder?
-          //do this before you manipulate the item's height.
-          this.adjustParentHeightRecursive(item, item._height, item._originalHeight);
-
           //we've initialized the original height on the element first in update(), required for CSS transition to grow the item size.
+          console.log("CHANGING HEIGHT 1 ="+item.elementId+" item.isChangingHeight="+item.isChangingHeight);
           item.isChangingHeight = true;
-          item.changeHeight(item._height);
 
+          item.changeHeight(item._height);
+          //debugger;
       }
     }
 
@@ -1382,7 +1329,7 @@ COPY:
       console.log("item._height ="+item._height+" parseFloat($(item.element).css('height'))="+parseFloat($(item.element).css('height')));
 
       console.log("item.get('isAnimated')="+item.get('isAnimated'));
-      item._height = item._originalHeight;
+      console.log("CHANGING HEIGHT 2 ="+item.elementId);
       item.changeHeight("auto");
       item.swapFromFolder = false;
       item.isChangingHeight = true;
@@ -1470,19 +1417,13 @@ COPY:
     //if this item is the current drop target, and we've adjusted it's height, remove the corresponding amount from position, because they space has already been inserted into the drop target
     //or if this item has a child that is an active drop target
     console.log("--------------");
-    console.log("item.elementId"+item.elementId+"this.hasChild(item, 'activeDropTarget', '===', true) ="+this.hasChild(item, 'activeDropTarget', '===', true));
+    console.log("item.swapFromFolder="+item.swapFromFolder+" item._height="+item._height+" item._originalHeight="+item._originalHeight+" parseFloat($(item.element).css('height'))"+parseFloat($(item.element).css('height')));
 
-    //update this.
-    //this.dropTarget = this.findDropTarget();
-
-    //have to make use of this somewhere probably:
-    //this.hasChild(item, 'activeDropTarget', '===', true) > 0)
-
-    if((item.swapFromFolder === false && item._height !== item._originalHeight))
+    if(item.swapFromFolder === false && (item._height !== item._originalHeight || this.hasChild(item, 'activeDropTarget', '===', true) > 0))
     {
       console.log("gootta do something for "+item.elementId+" position="+position);
       //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
-      position = position - (this.currentlyDraggedComponent.get('height'));
+        position = position - (this.currentlyDraggedComponent.get('height'));
 
 
       console.log("and position again ="+position);
@@ -1984,6 +1925,7 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     if(this.dropTarget !== this)
     {
       this.dropTarget.changeHeight("auto"); //remove any height resizing
+      console.log("CHANGING HEIGHT 3 droptarget="+this.dropTarget.elementId);
     }
 
     this.dropTarget = null;
