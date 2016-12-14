@@ -93,22 +93,23 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       if(value === "auto")
       {
-        //disable transitions
-        $(this.element).css('transition', 'none');
-
-        //define a minimum height to prevent DOM transitioning from 0px (auto)
-        if(this._originalHeight >= this._height)
-        {
-          $(this.element).css('min-height', this._height);
-        } else {
-          $(this.element).css('min-height', this._originalHeight);
-        }
 
         //only change the height if necessary, prevents accidental duplicate calls
         if(parseFloat($(this.element).css("height")) !== parseFloat(this._originalHeight))
         {
+            //disable transitions
+            $(this.element).css('transition', 'none');
+
+            //define a minimum height to prevent DOM transitioning from 0px (auto)
+            if(this._originalHeight >= this._height)
+            {
+              $(this.element).css('min-height', this._height+"px");
+            } else {
+              $(this.element).css('min-height', this._originalHeight+"px");
+            }
+
             //set the height to the current value
-            $(this.element).css( "height", this._height);
+            $(this.element).css( "height", this._height+"px");
 
             $(this.element).height(); // Force-apply styles
 
@@ -116,16 +117,15 @@ export default Ember.Mixin.create(SortableItemMixin, {
             $(this.element).css('transition', '');
 
             //change the height back to original value
-            $(this.element).css( "height", this._originalHeight);
+            $(this.element).css("height", this._originalHeight+"px").css("min-height", this._originalHeight+"px");
+
 
             console.log("HEIGHT::Reset to auto "+this.elementId);
 
             //reset the height of the object.
-            this._height = this._originalHeight;
+            this.set('_height', this._originalHeight);
 
         } else {
-          //re-enable transitions
-          $(this.element).css('transition', '');
           //console.log("HEIGHT::Changing duplicate call didn't run");
         }
 
@@ -136,22 +136,22 @@ export default Ember.Mixin.create(SortableItemMixin, {
       } else {
         //value is a number.
 
-        //disable transitions
-        $(this.element).css('transition', 'none');
-
-        //define a minimum height to prevent DOM transitioning from 0px (auto)
-        if(this._originalHeight >= this._height)
-        {
-          $(this.element).css('min-height', this._height);
-        } else {
-          $(this.element).css('min-height', this._originalHeight);
-        }
-
         //only change the height if necessary, prevents accidental duplicate calls
-        if(parseFloat($(this.element).css("height")) !== parseFloat(this._height))
+        if(parseFloat($(this.element).css("height")) !== parseFloat(value))
         {
+          //disable transitions
+          $(this.element).css('transition', 'none');
+
+          //define a minimum height to prevent DOM transitioning from 0px (auto)
+          if(this._originalHeight >= this._height)
+          {
+            $(this.element).css('min-height', this._height+"px");
+          } else {
+            $(this.element).css('min-height', this._originalHeight+"px");
+          }
+
           //set the height to the original value
-          $(this.element).css("height", this._originalHeight);
+          $(this.element).css("height", this._originalHeight+"px");
 
           $(this.element).height(); // Force-apply styles
 
@@ -159,10 +159,8 @@ export default Ember.Mixin.create(SortableItemMixin, {
           $(this.element).css('transition', '');
 
           //change the height
-          $(this.element).css("height", value);
+          $(this.element).css("height", value+"px").css("min-height", value+"px");
         } else {
-          //re-enable transitions
-          $(this.element).css('transition', '');
           //console.log("HEIGHT::Changing duplicate call didn't run");
         }
 
@@ -389,15 +387,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
         //set a minimum height to prevent flickering in safari.
         //css height transitions starting from auto end up starting at a height of 0 first!
         $(this.element).css('min-height', this._height);
-
       });
 
 
-    },
-
-
-    transitionEnd(){
-      console.log("end of transition");
     },
 
     /**
