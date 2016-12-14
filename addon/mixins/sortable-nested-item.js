@@ -69,6 +69,8 @@ export default Ember.Mixin.create(SortableItemMixin, {
       }
     },
 
+    //because of margin differences for folders and root items, we calculate the size of the dragged item once it has the appropriate class applied.
+    swappedDestinationHeight: 0,
 
     //position names for easy code readibility
     //when getting the height of the item, we must remove margin
