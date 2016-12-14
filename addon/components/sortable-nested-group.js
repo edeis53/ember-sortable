@@ -83,7 +83,12 @@ export default SortableGroupComponent.extend({
 
     //fix for scrolling on iOS, where items below the fold cannot be clicked due to conflict with liquid-fire.
     //by default, the .liquid-container class has the setting "transform: translateY(0);"
-    $( this.element ).closest( ".liquid-container").css('transform', 'none');
+    run.schedule('afterRender', () => {
+      run.later(this, () => {
+      $( this.element ).closest( ".liquid-container").css('transform', 'none');
+      $( this.element ).closest( ".liquid-child").css('transform', 'none');
+    }, 500); //500 ms later. To ensure liquid-fire transition is complete.
+    });
 
     //init
     this.setCssTransitionDuration();
@@ -96,6 +101,7 @@ export default SortableGroupComponent.extend({
   willDestroyElement() {
     //remove our changes to liquid-fire for the iOS scrolling issue, and prevent any issues with liquid-fire performing.
     $( this.element ).closest( ".liquid-container").css('transform', '');
+    $( this.element ).closest( ".liquid-child").css('transform', '');
   },
 
 
