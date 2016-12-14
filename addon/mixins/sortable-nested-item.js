@@ -92,6 +92,8 @@ export default Ember.Mixin.create(SortableItemMixin, {
     changeHeight(value) {
       //when height is set to auto or not manually defined as px value, it can't be used with transform, because it resets the height to 0 px before doing the transform in Safari if starting from auto. We need to set it to the original height first.
 
+      var _height = this._height;
+      var _originalHeight = this._originalHeight;
 
       if(value === "auto")
       {
@@ -101,6 +103,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
         {
             //disable transitions
             $(this.element).css('transition', 'none');
+
+            //turn off max-height so we can grow.
+            $(this.element).css('max-height', '');
 
             //define a minimum height to prevent DOM transitioning from 0px (auto)
             if(this._originalHeight >= this._height)
@@ -119,7 +124,8 @@ export default Ember.Mixin.create(SortableItemMixin, {
             $(this.element).css('transition', '');
 
             //change the height back to original value
-            $(this.element).css("height", this._originalHeight+"px").css("min-height", this._originalHeight+"px");
+            //lock it with max height. This prevents any issues when swapping between nested folders, becuase even thought the nested folder grows in size, but transforms it's position to move up into the old drag spacer, technically it's actually lower in the dom and forces the parent element to expand to fit, and creates a space at the bottom. By locking the height with max-height, we don't get this extra space.
+            $(this.element).css("height", this._originalHeight+"px").css("min-height", this._originalHeight+"px").css("max-height", this._originalHeight+"px");
 
 
             console.log("HEIGHT::Reset to auto "+this.elementId);
@@ -131,10 +137,6 @@ export default Ember.Mixin.create(SortableItemMixin, {
           //console.log("HEIGHT::Changing duplicate call didn't run");
         }
 
-
-
-
-
       } else {
         //value is a number.
 
@@ -143,6 +145,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
         {
           //disable transitions
           $(this.element).css('transition', 'none');
+
+          //turn off max-height so we can grow.
+          $(this.element).css('max-height', '');
 
           //define a minimum height to prevent DOM transitioning from 0px (auto)
           if(this._originalHeight >= this._height)
@@ -161,14 +166,19 @@ export default Ember.Mixin.create(SortableItemMixin, {
           $(this.element).css('transition', '');
 
           //change the height
-          $(this.element).css("height", value+"px").css("min-height", value+"px");
+          //lock it with max height. This prevents any issues when swapping between nested folders, becuase even thought the nested folder grows in size, but transforms it's position to move up into the old drag spacer, technically it's actually lower in the dom and forces the parent element to expand to fit, and creates a space at the bottom. By locking the height with max-height, we don't get this extra space.
+          $(this.element).css("height", value+"px").css("min-height", value+"px").css("max-height", value+"px");
+
         } else {
           //console.log("HEIGHT::Changing duplicate call didn't run");
         }
 
-
         //console.log("HEIGHT::Changing "+this.elementId);
       }
+
+
+      //after height change is complete, check SWAP!
+      this._tellGroup('isSwap'); //ED
 
     },
 
@@ -389,6 +399,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
         //set a minimum height to prevent flickering in safari.
         //css height transitions starting from auto end up starting at a height of 0 first!
         $(this.element).css('min-height', this._height);
+        //lock it with max height. This prevents any issues when swapping between nested folders, becuase even thought the nested folder grows in size, but transforms it's position to move up into the old drag spacer, technically it's actually lower in the dom and forces the parent element to expand to fit, and creates a space at the bottom. By locking the height with max-height, we don't get this extra space.
+        $(this.element).css('max-height', this._height);
+
       });
 
 
