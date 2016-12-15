@@ -89,11 +89,30 @@ export default Ember.Mixin.create(SortableItemMixin, {
     }).volatile(),
 
 
-    changeHeight(value) {
+    modifyPosition(value){
+      $(this.element).css('top', value+"px");
+      $(this.element).height(); // Force-apply styles
+
+      this.set('_y', this.element.offsetTop);
+    },
+
+    changeHeight(value, checkSwap = true) {
       //when height is set to auto or not manually defined as px value, it can't be used with transform, because it resets the height to 0 px before doing the transform in Safari if starting from auto. We need to set it to the original height first.
 
-      var _height = this._height;
-      var _originalHeight = this._originalHeight;
+      //calculate how much the height will change.
+      var currentHeight = parseFloat($(this.element).css("height"));
+      if(value === "auto")
+      {
+        let heightChangedAmount = currentHeight - this._originalHeight;
+
+        this._tellGroup('setHeightChangedAmount', heightChangedAmount);
+      } else {
+
+        let heightChangedAmount = currentHeight - value;
+
+        this._tellGroup('setHeightChangedAmount', heightChangedAmount);
+      }
+
 
       if(value === "auto")
       {
@@ -177,8 +196,13 @@ export default Ember.Mixin.create(SortableItemMixin, {
       }
 
 
+
       //after height change is complete, check SWAP!
-      this._tellGroup('isSwap'); //ED
+      if(checkSwap === true)
+      {
+        this._tellGroup('isSwap'); //ED
+      }
+
 
     },
 
@@ -880,14 +904,16 @@ export default Ember.Mixin.create(SortableItemMixin, {
       delete this._ydrag;
       delete this._xdrag;
 
-      //reset height
-      this._originalHeight = this._height = $(this.element).outerHeight();
-
       //reset swap, used for tracking when children are moved out of folders
       this.swapFromFolder = false;
 
-      el.css({ transform: '', height: ''  }); //reset height here too, revert from defined height (left over from a swap drop) and change to auto.
+      el.css({ transform: '', height: '', 'max-height': '', 'min-height': ''  }); //reset height here too, revert from defined height (left over from a swap drop) and change to auto.
       el.height(); // Force-apply styles
+
+      //reset height, now that it is reflowing with auto, grab the values and fix them.
+      this._originalHeight = this._height = $(this.element).outerHeight();
+      $(this.element).css('max-height', this._height);
+      $(this.element).css('min-height', this._height);
     },
 
 
