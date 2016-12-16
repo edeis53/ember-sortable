@@ -819,6 +819,7 @@ export default SortableGroupComponent.extend({
   update() {
 
     console.log("=========== UPDATE LOOP START ======="+Math.floor((Math.random() * 100) + 1));
+    console.log("=========== UPDATE LOOP START ======= !! "+Math.floor((Math.random() * 100) + 1));
 
     this.isSwap();
 
@@ -1131,6 +1132,7 @@ COPY:
     }
 
     console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
+    //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
 
 
       //handle exiting DropTargets
@@ -1310,10 +1312,53 @@ COPY:
     return false;
   },
 
+
+  adjustTopPosition(position, item, prevItem) {
+    //Adjust position of this item. The height has just changed.
+    //Which will push this item down and required excessive transform (looks like a bounce)
+    //to mitigate, we just change the top position of this element to match the difference of the increase in height of the folder
+
+    console.log(item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight);
+
+    if(this.get('heightChangedAmount') !== 0 && prevItem.isChangingHeight === true)
+    {
+      //&& prevItem.isChangingHeight === true && topAdjustmentRequired === false
+        console.log(item.elementId+" !! prevItem = "+prevItem.elementId+" we should adjust the top height for="+item.elementId+" by the following amount="+this.get('heightChangedAmount'));
+
+    }
+
+/*
+          topAdjustmentRequired = false;
+      console.log("MODIFYING FOR ="+item.elementId+ " "+this.get('heightChangedAmount'));
+      //reset the internal position.
+      item.modifyPosition(this.get('heightChangedAmount'));
+      //position = position - this.get('heightChangedAmount'); //(negative amount needs to be added.)
+
+      //debugger;
+      //set the position of the item, then increment the next one by the height of this item
+      set(item, direction, position);
+      //$(item.element).css('top', '');
+      this.set('heightChangedAmount', 0);
+    } else {
+      //set the position of the item, then increment the next one by the height of this item
+      set(item, direction, position);
+    }
+
+    */
+
+    return position;
+  },
+
+
   updateEachSortItem(item, position, index, sortedItems) {
     //index is the array index of the items we are looping through
     let dimension;
     let direction = this.get('direction');
+
+    //for when we shrink/expand a folder above an item. It's position gets moved as well, we correct here to prevent a bounce/flash as the item is moved around with translateY correction.
+    var topAdjustmentRequired = false;
+
+    var prevItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'prev');
 
     if (direction === 'x') {
       dimension = 'width';
@@ -1447,6 +1492,9 @@ COPY:
           //console.log("yep, still inserting the spacer");
           set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
 
+          //do we need to adjust?
+          position = this.adjustTopPosition(position, item, prevItem);
+
           //set the position of this item
           set(item, direction, position);
 
@@ -1468,29 +1516,11 @@ COPY:
                                           position = position + (this.currentlyDraggedComponent.get('height'));
                                         }
 
-          //Adjust position of this item. The height has just changed.
-          //Which will push this item down and required excessive transform (looks like a bounce)
-          //to mitigate, we just change the top position of this element to match the difference of the increase in height of the folder
-          /*
-          if(this.get('heightChangedAmount') !== 0 && item.isChangingHeight === false)
-          {
 
-            console.log("MODIFYING FOR ="+item.elementId+ " "+this.get('heightChangedAmount'));
-            //reset the internal position.
-            item.modifyPosition(this.get('heightChangedAmount'));
-            position = position - this.get('heightChangedAmount'); //(negative amount needs to be added.)
+          //do we need to adjust?
+          position = this.adjustTopPosition(position, item, prevItem);
 
-            //debugger;
-            //set the position of the item, then increment the next one by the height of this item
-            set(item, direction, position);
-            //$(item.element).css('top', '');
-
-          } else {
-            //set the position of the item, then increment the next one by the height of this item
-            set(item, direction, position);
-          }
-          */
-
+          //set the position of the item, then increment the next one by the height of this item
           set(item, direction, position);
           set(item, 'hasDragSpacerAbove', false);
       console.log("DIMENSION: B = get(item, dimension)="+get(item, dimension)+" _height="+(get(item, '_height') + parseFloat($(item.element).css('margin-bottom'))));
@@ -1500,6 +1530,9 @@ COPY:
           position += get(item, '_height') + parseFloat($(item.element).css('margin-bottom'));
         }
     } else if (this.currentlyDropping === true){
+      //do we need to adjust?
+      position = this.adjustTopPosition(position, item, prevItem);
+
       //perform update during drop
       set(item, direction, position);
       set(item, 'hasDragSpacerAbove', false);

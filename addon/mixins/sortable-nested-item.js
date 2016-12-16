@@ -114,6 +114,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       }
 
+      console.log("!! changed the height for "+this.elementId+", sending the amount as="+heightChangedAmount);
 
       if(value === "auto")
       {
