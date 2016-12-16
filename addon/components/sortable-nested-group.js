@@ -968,6 +968,9 @@ COPY:
 
   coordinateRecursiveUpdate(sortedItems, position) {
 
+    //for when we shrink/expand a folder above an item. It's position gets moved as well, we correct here to prevent a bounce/flash as the item is moved around with translateY correction.
+    this.topAdjustmentRequired = false;
+
     //console.log("recursive, using this position="+position);
 
     var i = 0; //for test
@@ -1131,7 +1134,7 @@ COPY:
       //draggedBottomEdge = draggedBottomEdge - translateY;
     }
 
-    console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
+    //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
     //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
 
 
@@ -1312,18 +1315,30 @@ COPY:
     return false;
   },
 
+  topAdjustmentRequired: false,
 
   adjustTopPosition(position, item, prevItem) {
     //Adjust position of this item. The height has just changed.
     //Which will push this item down and required excessive transform (looks like a bounce)
     //to mitigate, we just change the top position of this element to match the difference of the increase in height of the folder
 
-    console.log(item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight);
+    //console.log(item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight);
 
-    if(this.get('heightChangedAmount') !== 0 && prevItem.isChangingHeight === true)
+    if(this.get('heightChangedAmount') !== 0 && prevItem.isChangingHeight === true && this.topAdjustmentRequired === false)
     {
-      //&& prevItem.isChangingHeight === true && topAdjustmentRequired === false
-        console.log(item.elementId+" !! prevItem = "+prevItem.elementId+" we should adjust the top height for="+item.elementId+" by the following amount="+this.get('heightChangedAmount'));
+      this.topAdjustmentRequired = true;
+
+      if(this.get('heightChangedAmount') > 0)
+      {
+        position = position - this.get('heightChangedAmount');
+      }
+
+    }
+
+    console.log("this.topAdjustmentRequired="+this.topAdjustmentRequired+" this.get('heightChangedAmount')="+this.get('heightChangedAmount'));
+    if(this.topAdjustmentRequired === true)
+    {
+      item.modifyPosition(this.get('heightChangedAmount'));
 
     }
 
@@ -1354,9 +1369,6 @@ COPY:
     //index is the array index of the items we are looping through
     let dimension;
     let direction = this.get('direction');
-
-    //for when we shrink/expand a folder above an item. It's position gets moved as well, we correct here to prevent a bounce/flash as the item is moved around with translateY correction.
-    var topAdjustmentRequired = false;
 
     var prevItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'prev');
 
@@ -1391,6 +1403,7 @@ COPY:
       {
         console.log("ADJUST: 1 change to auto");
         //reset on non-active drop targets
+        item.isChangingHeight = true;
         item.changeHeight("auto");
         //item._height = item._originalHeight;
         //$(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
@@ -1513,7 +1526,7 @@ COPY:
                                         {
                                           console.log("success Here");
                                           set(item, 'hasDragSpacerAbove', true); //keep track of who has the spacer
-                                          position = position + (this.currentlyDraggedComponent.get('height'));
+                                          //position = position + (this.currentlyDraggedComponent.get('height'));
                                         }
 
 
@@ -1556,11 +1569,12 @@ COPY:
       console.log("DISABLED:: position1: subtracing height of draggedcomponent");
       //console.log("have child as drop or my height is different");
       //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
-      position = position - this.currentlyDraggedComponent.get('swappedDestinationHeight');
+      //position = position - this.currentlyDraggedComponent.get('swappedDestinationHeight');
     } else if (item.isChangingHeight === true && item._height === item._originalHeight && this.swapDropTarget === false && item.swapFromFolder === false) {
       //start dragging out of a folder and then return.
       //folder is shrinking by height of component, we need to adjust position.
-      position = position - this.currentlyDraggedComponent.get('height');
+      console.log("SUBTRACTING OT OF FODLER");
+      //position = position - this.currentlyDraggedComponent.get('height');
     }
 
         if((this.swapDropTarget === true && item.swapFromFolder === true && (item._height !== item._originalHeight || this.hasChild(item, 'activeDropTarget', '===', true) > 0))){
@@ -1572,7 +1586,7 @@ COPY:
     //if we've shrunk the folder size, we need to increase position to compensate
     if(item.swapFromFolder === true)
     {
-      position = position + this.currentlyDraggedComponent.get('height');
+      //position = position + this.currentlyDraggedComponent.get('height');
     }
 
     // add additional spacing around active element

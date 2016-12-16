@@ -91,6 +91,9 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
 
     modifyPosition(value){
+      //adjust the current top position by this amount
+      value = parseFloat($(this.element).css('top')) + value;
+
       $(this.element).css('top', value+"px");
       $(this.element).height(); // Force-apply styles
 
@@ -104,12 +107,12 @@ export default Ember.Mixin.create(SortableItemMixin, {
       var currentHeight = parseFloat($(this.element).css("height"));
       if(value === "auto")
       {
-        let heightChangedAmount = currentHeight - this._originalHeight;
+        var heightChangedAmount = currentHeight - this._originalHeight;
 
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       } else {
 
-        let heightChangedAmount = currentHeight - value;
+        var heightChangedAmount = currentHeight - value;
 
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       }
@@ -909,7 +912,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
       //reset swap, used for tracking when children are moved out of folders
       this.swapFromFolder = false;
 
-      el.css({ transform: '', height: '', 'max-height': '', 'min-height': ''  }); //reset height here too, revert from defined height (left over from a swap drop) and change to auto.
+      el.css({ transform: '', height: '', 'max-height': '', 'min-height': '', 'top': ''  }); //reset height here too, revert from defined height (left over from a swap drop) and change to auto.
       el.height(); // Force-apply styles
 
       //reset height, now that it is reflowing with auto, grab the values and fix them.
