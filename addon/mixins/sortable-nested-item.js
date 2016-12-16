@@ -76,12 +76,13 @@ export default Ember.Mixin.create(SortableItemMixin, {
     //when getting the height of the item, we must remove margin
     //outerHeight doesn't include margin by default.
     //http://api.jquery.com/outerheight/
+    //IMPORTANT:: use $(this.element).offset().top here instead of this.get('y'), which can be a cached/outdated value. Especially if you change the height of a previousItem, the current item will still have it's old y position stored.
     topEdge: computed(function() {
-      return this.get('y');
+      return $(this.element).offset().top;
     }).volatile(),
 
     bottomEdge: computed(function() {
-      return this.get('y') + $(this.element).outerHeight();
+      return $(this.element).offset().top + $(this.element).outerHeight();
     }).volatile(),
 
     middlePosition: computed(function() {

@@ -1115,17 +1115,22 @@ COPY:
     //Adjust for any css transform of the parent
     var translateY = parseFloat($(itemParent.element).css('transform').split(',')[5]);
     //will return as "NaN" (not a number) if the transform isn't set.
-    //console.log(translateY);
+
+    //change position to account for transform when entering a folder.
     if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN(translateY) === false)
     {
+      console.log("translatingY ="+translateY);
+      //THIS ISN'T NEEDED AT ALL ANYMORE!!! It was because the stupid nested item was getting bottomEdge, etc. using an outdated value!!
+      //When we shrunk the parent, the item changed position, but still thought it was in the old position giving us the wrong coordinates.
+      //This was our fix to compensate, but I've actually corrected the problem in item by getting LIVE values.
+
       //get the tranform:translateY value, which may be negative and add it to the childPosition
-      draggedMiddlePosition = draggedMiddlePosition - translateY;
-      draggedTopEdge = draggedTopEdge - translateY;
-      draggedBottomEdge = draggedBottomEdge - translateY;
+      //draggedMiddlePosition = draggedMiddlePosition - translateY;
+      //draggedTopEdge = draggedTopEdge - translateY;
+      //draggedBottomEdge = draggedBottomEdge - translateY;
     }
 
-
-    //console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
+    console.log((item.get('parent') ? '  :nested>'+item.get('parent.elementId')+' ': '') + index + item.get('elementId') + " isDragging="+item.isDragging+" position="+position+" draggedBottomEdge="+draggedBottomEdge+" draggedTopEdge="+draggedTopEdge+" item.get('topEdge')"+item.get('topEdge')+" item.get('bottomEdge')"+item.get('bottomEdge')+(prevItem ? " prevItem.get('topEdge')="+prevItem.get('topEdge')+" prevItem.get('bottomEdge')="+prevItem.get('bottomEdge') : 'prevItem=false')+(nextItem ? " nextItem.get('topEdge')="+nextItem.get('topEdge')+" nextItem.get('bottomEdge')="+nextItem.get('bottomEdge') : 'nextItem=false'));
 
 
       //handle exiting DropTargets
