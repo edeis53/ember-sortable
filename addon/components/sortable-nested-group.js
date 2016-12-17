@@ -1145,6 +1145,9 @@ COPY:
       //don't shrink the folder, if it now has a child that is a drop target. In this case, this folder is already the correct size
       if(prevItem.isChangingHeight === false && prevItem && prevItem.isChangingHeight === false && prevItem.activeDropTarget === true && (draggedBottomEdge + adjustment) > prevItem.get('bottomEdge') && this.hasChild(prevItem, 'activeDropTarget', '===', true) === 0)
       {
+
+        this.intersectingFolderEdge = 'bottom';
+
         //shrink the drop target
         if(prevItem._height !== prevItem._originalHeight && prevItem !== this.currentlyDraggedComponent.get('parent') )
         {
@@ -1187,6 +1190,8 @@ COPY:
       //don't shrink the folder, if it now has a child that is a drop target. In this case, this folder is already the correct size
       if(item.isChangingHeight === false && item.activeDropTarget === true && (draggedTopEdge - adjustment) < item.get('topEdge') && this.hasChild(item, 'activeDropTarget', '===', true) === 0)
       {
+        this.intersectingFolderEdge = 'top';
+
         //shrink the drop target
         if(item._height !== item._originalHeight && item !== this.currentlyDraggedComponent.get('parent') )
         {
@@ -1317,6 +1322,8 @@ COPY:
 
   topAdjustmentRequired: false,
 
+  intersectingFolderEdge: null,
+
   adjustTopPosition(position, item, prevItem) {
     //Adjust position of this item. The height has just changed.
     //Which will push this item down and required excessive transform (looks like a bounce)
@@ -1328,7 +1335,7 @@ COPY:
     {
       this.topAdjustmentRequired = true;
 
-      if(this.get('heightChangedAmount') > 0)
+      if(this.get('heightChangedAmount') > 0 && this.intersectingFolderEdge === 'bottom')
       {
         position = position - this.get('heightChangedAmount');
       }
@@ -1536,7 +1543,7 @@ COPY:
           //set the position of the item, then increment the next one by the height of this item
           set(item, direction, position);
           set(item, 'hasDragSpacerAbove', false);
-      console.log("DIMENSION: B = get(item, dimension)="+get(item, dimension)+" _height="+(get(item, '_height') + parseFloat($(item.element).css('margin-bottom'))));
+      //console.log("DIMENSION: B = get(item, dimension)="+get(item, dimension)+" _height="+(get(item, '_height') + parseFloat($(item.element).css('margin-bottom'))));
 
           //instead of just using 'height'(dimension variable), we should use the private variable of height, which is it's future value, if it was changed.
           //position += get(item, dimension);
