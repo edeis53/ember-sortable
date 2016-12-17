@@ -1201,6 +1201,7 @@ COPY:
         {
           console.log("CHANGE: 3 shrinking to auto");
           item.changeHeight("auto");
+          item.isChangingHeight = true;
           //item._height = item._originalHeight;
           //$(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
         }
@@ -1333,7 +1334,7 @@ COPY:
     //Which will push this item down and required excessive transform (looks like a bounce)
     //to mitigate, we just change the top position of this element to match the difference of the increase in height of the folder
 
-    console.log(item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight);
+    console.log("this.intersectingFolderEdge="+this.intersectingFolderEdge+"  "+item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight+" this.topAdjustmentRequired="+this.topAdjustmentRequired);
 
     if(this.get('heightChangedAmount') !== 0 && prevItem.isChangingHeight === true && this.topAdjustmentRequired === false)
     {
