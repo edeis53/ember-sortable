@@ -1568,6 +1568,61 @@ COPY:
 
 
 
+
+    /*
+     *
+     * If this is the last element and it is a folder, perform necessary shrinking.
+     *    Other shrinking is setup for the item below the folder to insert the spacer.
+     *
+     *
+     */
+     var draggedMiddlePosition = $(this.currentlyDraggedComponent.ghostElement()).offset().top + ($(this.currentlyDraggedComponent.ghostElement()).outerHeight() / 2);
+     var draggedTopEdge = $(this.currentlyDraggedComponent.ghostElement()).offset().top;
+     var draggedBottomEdge = $(this.currentlyDraggedComponent.ghostElement()).offset().top + ($(this.currentlyDraggedComponent.ghostElement()).outerHeight());
+
+     let adjustment = 0;
+     //drag out of bottom of drop target (exiting)
+     //don't shrink the folder, if it now has a child that is a drop target. In this case, this folder is already the correct size
+     if(item.isChangingHeight === false && item.isChangingHeight === false && item.activeDropTarget === true && (draggedBottomEdge + adjustment) > item.get('bottomEdge') && this.hasChild(item, 'activeDropTarget', '===', true) === 0)
+     {
+
+       this.intersectingFolderEdge = 'bottom';
+
+       //shrink the drop target
+       if(item._height !== item._originalHeight && item !== this.currentlyDraggedComponent.get('parent') )
+       {
+         console.log("CHANGE: 1");
+         item.isChangingHeight = true;
+         item.changeHeight("auto");
+       }
+
+       //shrink the drop target,
+       //which has a child model, and is the parent of the dragged object
+       //if ((item.swapFromFolder === true || item._height === item._originalHeight) && prevItem === this.currentlyDraggedComponent.get('parent'))
+       //has a small adjustment for exiting (negative), as the folder is smaller when dragging out than dragging in.
+       if ((item.swapFromFolder === true || item._height === item._originalHeight) && item === this.currentlyDraggedComponent.get('parent') && (draggedBottomEdge - adjustment) > item.get('bottomEdge') )
+       {
+         console.log("CHANGE: 2 shrinking manual");
+         item._height = item._originalHeight - this.currentlyDraggedComponent.get('height');
+
+         item.swapFromFolder = true;
+
+         //update only if the height has changed, use parseFloat to remove px from value.
+         if(item._height !== parseFloat($(item.element).css('height')))
+         {
+           item.isChangingHeight = true;
+           item.changeHeight(item._height);
+         }
+       }
+
+     }
+     /*
+      * end shrinking of last folder.
+      *
+      */
+
+
+
     //if this item is the current drop target, and we've adjusted it's height, remove the corresponding amount from position, because they space has already been inserted into the drop target
     //or if this item has a child that is an active drop target
     //console.log("SECOND CATCH:: this.swapDropTarget ="+this.swapDropTarget+" item.swapFromFolder="+item.swapFromFolder+" haschild="+this.hasChild(item, 'activeDropTarget', '===', true)+" itemHeightVsOrig="+(item._height !== item._originalHeight ? true: false));
