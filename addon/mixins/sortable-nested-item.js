@@ -93,12 +93,25 @@ export default Ember.Mixin.create(SortableItemMixin, {
     modifyPosition(value){
       //adjust the current top position by this amount
       let top = (  isNaN( parseFloat($(this.element).css('top')) ) === true ? 0 : parseFloat($(this.element).css('top')) );
-      value = Math.round( top + value );
 
-      $(this.element).css('top', value+"px");
-      $(this.element).height(); // Force-apply styles
-      
-      this.set('_y', this.element.offsetTop);
+      //prevent folder from being changed twice. eg. currentTop= -33 and value =-33, would result in -66, which is wrong!
+      //this fixes most of the issue of dragging too fast.
+      if(top !== value)
+      {
+        console.log(" !! modifyPosition value="+value+" currentTop="+top+" newValue="+Math.round( top + value ));
+
+        value = Math.round( top + value );
+
+        $(this.element).css('top', value+"px");
+        $(this.element).height(); // Force-apply styles
+
+        this.set('_y', this.element.offsetTop);
+        //See if this will fix the bug were we are repositioning very fast with our hands and things end up in the wrong spot.
+        //this.set('_y', this.get('_y')+value);
+      }
+
+
+
     },
 
     changeHeight(value, checkSwap = true) {
@@ -108,13 +121,13 @@ export default Ember.Mixin.create(SortableItemMixin, {
       var currentHeight = parseFloat($(this.element).css("height"));
       if(value === "auto")
       {
-        var heightChangedAmount = currentHeight - this._originalHeight;
+        var heightChangedAmount = Math.round((currentHeight - this._originalHeight));
 
         console.log("why is this NAN="+heightChangedAmount);
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       } else {
 
-        var heightChangedAmount = currentHeight - value;
+        var heightChangedAmount = Math.round(( currentHeight - value));
         console.log("why is this NAN="+heightChangedAmount);
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       }
