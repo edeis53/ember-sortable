@@ -90,24 +90,53 @@ export default Ember.Mixin.create(SortableItemMixin, {
     }).volatile(),
 
 
+    modifyPositionState: null,
+
     modifyPosition(value){
       //adjust the current top position by this amount
       let top = (  isNaN( parseFloat($(this.element).css('top')) ) === true ? 0 : parseFloat($(this.element).css('top')) );
 
+
+      if(top !== 0 && (top + value !== 0))
+      {
+          //if top has already been set, and we aren't asking to reset it, that means another folder has meed modified, and we need to reset this one before making any appropriate changes.
+          $(this.element).css('top', ''); //remove top
+          $(this.element).height(); // Force-apply styles
+
+          console.log(" !!! reseting="+item.elementId);
+      }
+
       //prevent folder from being changed twice. eg. currentTop= -33 and value =-33, would result in -66, which is wrong!
       //this fixes most of the issue of dragging too fast.
-      if(top !== value)
+      //top must be zero to make a change, or to reset current value must be the inverse, resulting in 0 for reset.
+      if(top === 0 || (top + value === 0))
       {
-        console.log(" !! modifyPosition value="+value+" currentTop="+top+" newValue="+Math.round( top + value ));
+
+        var currentState;
+        if (value > 0) {
+          //growing
+          currentState = "growing";
+        } else {
+          //shrinking
+          currentState = "shrinking";
+        }
+
+        if(currentState === this.modifyPositionState)
+        {
+          console.log(" !!! don't shrink or grow twice please!!! ");
+          return;
+        }
+
+        console.log(" !!! modifyPosition value="+value+" currentTop="+top+" newValue="+Math.round( top + value ));
 
         value = Math.round( top + value );
 
         $(this.element).css('top', value+"px");
         $(this.element).height(); // Force-apply styles
 
-        this.set('_y', this.element.offsetTop);
-        //See if this will fix the bug were we are repositioning very fast with our hands and things end up in the wrong spot.
-        //this.set('_y', this.get('_y')+value);
+        //this.set('_y', this.element.offsetTop);
+        //Fix the bug were we are repositioning very fast with our hands and things end up in the wrong spot. Just use the data instead of getting from DOM, which may be transitioning.
+        this.set('_y', this.get('_y')+value);
       }
 
 
@@ -123,7 +152,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
       {
         var heightChangedAmount = Math.round((currentHeight - this._originalHeight));
 
-        console.log("why is this NAN="+heightChangedAmount);
+        console.log(" !! why is this NAN="+heightChangedAmount);
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       } else {
 

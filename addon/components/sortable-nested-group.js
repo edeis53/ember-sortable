@@ -37,7 +37,7 @@ export default SortableGroupComponent.extend({
     @type Number
     @default 125
   */
-  updateInterval: 250,
+  updateInterval: 150,
 
 
   //list of allow model types for drop targets
@@ -1145,9 +1145,10 @@ COPY:
       //handle exiting DropTargets
       let adjustment = 0; //exit the drop target a little early
 
+      console.log("prevItem.isChangingHeight="+prevItem.isChangingHeight+" ")
       //drag out of bottom of drop target (exiting)
       //don't shrink the folder, if it now has a child that is a drop target. In this case, this folder is already the correct size
-      if(prevItem.isChangingHeight === false && prevItem && prevItem.isChangingHeight === false && prevItem.activeDropTarget === true && (draggedBottomEdge + adjustment) > prevItem.get('bottomEdge') && this.hasChild(prevItem, 'activeDropTarget', '===', true) === 0)
+      if(prevItem && prevItem.isChangingHeight === false && prevItem.activeDropTarget === true && (draggedBottomEdge + adjustment) > prevItem.get('bottomEdge') && this.hasChild(prevItem, 'activeDropTarget', '===', true) === 0)
       {
 
         this.intersectingFolderEdge = 'bottom';
@@ -1334,7 +1335,7 @@ COPY:
     //Which will push this item down and required excessive transform (looks like a bounce)
     //to mitigate, we just change the top position of this element to match the difference of the increase in height of the folder
 
-    console.log("this.intersectingFolderEdge="+this.intersectingFolderEdge+"  "+item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight+" this.topAdjustmentRequired="+this.topAdjustmentRequired);
+    //console.log("this.intersectingFolderEdge="+this.intersectingFolderEdge+"  "+item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight+" this.topAdjustmentRequired="+this.topAdjustmentRequired);
 
     if(this.get('heightChangedAmount') !== 0 && prevItem.isChangingHeight === true && this.topAdjustmentRequired === false)
     {
@@ -1347,13 +1348,13 @@ COPY:
 
       if(this.get('heightChangedAmount') > 0 && this.intersectingFolderEdge === 'top')
       {
-        console.log(" !! doing this");
+        //console.log(" !! doing this");
         //position = position + 500 + this.get('heightChangedAmount');
       }
 
     }
 
-    console.log(" !! "+item.elementId+" this.topAdjustmentRequired="+this.topAdjustmentRequired+" this.get('heightChangedAmount')="+this.get('heightChangedAmount'));
+    //console.log(" !!! "+item.elementId+" this.topAdjustmentRequired="+this.topAdjustmentRequired+" this.get('heightChangedAmount')="+this.get('heightChangedAmount'));
     if(this.topAdjustmentRequired === true)
     {
       item.modifyPosition(this.get('heightChangedAmount'));
