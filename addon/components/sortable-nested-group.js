@@ -398,8 +398,6 @@ export default SortableGroupComponent.extend({
       //console.log("children.length = "+children.length);
       children.forEach(child => {
 
-        console.log(child.get("elementId"));
-
         if(thisoperator !== null && value === null)
         {
           if(thisoperator === 'this.height / 2')
@@ -831,6 +829,7 @@ export default SortableGroupComponent.extend({
 
     //init
     this.insertedDragSpacer = false;
+    this.intersectingFolderEdge = null;
 
 
 
@@ -1024,8 +1023,13 @@ COPY:
           //childPosition = childPosition + translateY;
         }
 
+        //pass adjustmentRequired data around while processing children. It get's reset at the start of the loop, we don't want it to effect children, but will need it for the next parent item in the loop
+        let temp = this.topAdjustmentRequired;
+
         //recursive children
         this.coordinateRecursiveUpdate(item.get('children'), childPosition);
+
+        this.topAdjustmentRequired = temp;
       }
 
     });
@@ -1329,7 +1333,7 @@ COPY:
     //Which will push this item down and required excessive transform (looks like a bounce)
     //to mitigate, we just change the top position of this element to match the difference of the increase in height of the folder
 
-    //console.log(item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight);
+    console.log(item.elementId+" !! this.get('heightChangedAmount') ="+this.get('heightChangedAmount')+" prevItem.isChangingHeight="+prevItem.isChangingHeight);
 
     if(this.get('heightChangedAmount') !== 0 && prevItem.isChangingHeight === true && this.topAdjustmentRequired === false)
     {
@@ -1340,9 +1344,15 @@ COPY:
         position = position - this.get('heightChangedAmount');
       }
 
+      if(this.get('heightChangedAmount') > 0 && this.intersectingFolderEdge === 'top')
+      {
+        console.log(" !! doing this");
+        //position = position + 500 + this.get('heightChangedAmount');
+      }
+
     }
 
-    console.log("this.topAdjustmentRequired="+this.topAdjustmentRequired+" this.get('heightChangedAmount')="+this.get('heightChangedAmount'));
+    console.log(" !! "+item.elementId+" this.topAdjustmentRequired="+this.topAdjustmentRequired+" this.get('heightChangedAmount')="+this.get('heightChangedAmount'));
     if(this.topAdjustmentRequired === true)
     {
       item.modifyPosition(this.get('heightChangedAmount'));
@@ -1580,10 +1590,13 @@ COPY:
      var draggedTopEdge = $(this.currentlyDraggedComponent.ghostElement()).offset().top;
      var draggedBottomEdge = $(this.currentlyDraggedComponent.ghostElement()).offset().top + ($(this.currentlyDraggedComponent.ghostElement()).outerHeight());
 
+     var nextItem = this.findNearestItemNotDraggedScope(sortedItems, index, 'next');
+
      let adjustment = 0;
      //drag out of bottom of drop target (exiting)
      //don't shrink the folder, if it now has a child that is a drop target. In this case, this folder is already the correct size
-     if(item.isChangingHeight === false && item.isChangingHeight === false && item.activeDropTarget === true && (draggedBottomEdge + adjustment) > item.get('bottomEdge') && this.hasChild(item, 'activeDropTarget', '===', true) === 0)
+
+     if(nextItem === false && item.isChangingHeight === false && item.isChangingHeight === false && item.activeDropTarget === true && (draggedBottomEdge + adjustment) > item.get('bottomEdge') && this.hasChild(item, 'activeDropTarget', '===', true) === 0)
      {
 
        this.intersectingFolderEdge = 'bottom';

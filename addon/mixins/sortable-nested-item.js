@@ -92,11 +92,12 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
     modifyPosition(value){
       //adjust the current top position by this amount
-      value = parseFloat($(this.element).css('top')) + value;
+      let top = (  isNaN( parseFloat($(this.element).css('top')) ) === true ? 0 : parseFloat($(this.element).css('top')) );
+      value = Math.round( top + value );
 
       $(this.element).css('top', value+"px");
       $(this.element).height(); // Force-apply styles
-
+      
       this.set('_y', this.element.offsetTop);
     },
 
@@ -109,11 +110,12 @@ export default Ember.Mixin.create(SortableItemMixin, {
       {
         var heightChangedAmount = currentHeight - this._originalHeight;
 
+        console.log("why is this NAN="+heightChangedAmount);
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       } else {
 
         var heightChangedAmount = currentHeight - value;
-
+        console.log("why is this NAN="+heightChangedAmount);
         this._tellGroup('setHeightChangedAmount', heightChangedAmount);
       }
 
