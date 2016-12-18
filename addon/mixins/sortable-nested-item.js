@@ -19,6 +19,17 @@ export default Ember.Mixin.create(SortableItemMixin, {
   //add the ghost class to the hidden dragged component. Prevents flickering between showing the ghost and hiding the dragged component.
 
 
+
+      /**
+        The frequency with which the group is informed
+        that an update is required.
+        @property updateInterval
+        @type Number
+        @default 125
+      */
+      updateInterval: 250,  //~~~!!!!! IMPORTANT !!!!!! Must be slower than CSS transition!!!
+
+
     /**
       True if the item is currently being dragged.
       @property isDragging

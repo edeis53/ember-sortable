@@ -30,16 +30,6 @@ export default SortableGroupComponent.extend({
   */
   items: computed(() => a()),
 
-  /**
-    The frequency with which the group is informed
-    that an update is required.
-    @property updateInterval
-    @type Number
-    @default 125
-  */
-  updateInterval: 150,
-
-
   //list of allow model types for drop targets
   //define in controller and pass to the component
   allowedDropTargets: [],
@@ -1143,7 +1133,7 @@ COPY:
 
 
       //handle exiting DropTargets
-      let adjustment = 0; //exit the drop target a little early
+      let adjustment = 5; //exit the drop target a little early !!! Important. Fixes issue on iPad where it can fight when dragging into a folder (opens/closes on next loop). Only seems to happen when using a rather large menu with lots of items that need DOM to update.
 
       console.log("prevItem.isChangingHeight="+prevItem.isChangingHeight+" ")
       //drag out of bottom of drop target (exiting)
@@ -1606,7 +1596,7 @@ COPY:
        //shrink the drop target
        if(item._height !== item._originalHeight && item !== this.currentlyDraggedComponent.get('parent') )
        {
-         console.log("CHANGE: 1");
+         console.log("LAST ELEMENT SHRINK: 1");
          item.isChangingHeight = true;
          item.changeHeight("auto");
        }
@@ -1617,7 +1607,7 @@ COPY:
        //has a small adjustment for exiting (negative), as the folder is smaller when dragging out than dragging in.
        if ((item.swapFromFolder === true || item._height === item._originalHeight) && item === this.currentlyDraggedComponent.get('parent') && (draggedBottomEdge - adjustment) > item.get('bottomEdge') )
        {
-         console.log("CHANGE: 2 shrinking manual");
+         console.log("LAST ELEMENT SHRINK: 2 shrinking manual");
          item._height = item._originalHeight - this.currentlyDraggedComponent.get('height');
 
          item.swapFromFolder = true;
