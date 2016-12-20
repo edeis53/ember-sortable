@@ -1133,7 +1133,7 @@ COPY:
 
 
       //handle exiting DropTargets
-      let adjustment = 5; //exit the drop target a little early !!!
+      let adjustment = 0; //exit the drop target a little early !!!
 
       //console.log("prevItem.isChangingHeight="+prevItem.isChangingHeight+" ")
 
@@ -1161,7 +1161,7 @@ COPY:
         //which has a child model, and is the parent of the dragged object
         //if ((prevItem.swapFromFolder === true || prevItem._height === prevItem._originalHeight) && prevItem === this.currentlyDraggedComponent.get('parent'))
         //has a small adjustment for exiting (negative), as the folder is smaller when dragging out than dragging in.
-        if ((prevItem.swapFromFolder === true || prevItem._height === prevItem._originalHeight) && prevItem === this.currentlyDraggedComponent.get('parent') && (draggedBottomEdge - adjustment) > prevItem.get('bottomEdge') )
+        if ((prevItem.swapFromFolder === true || prevItem._height === prevItem._originalHeight) && (draggedBottomEdge - adjustment) > prevItem.get('bottomEdge') )
         {
           console.log("CHANGE: 2 shrinking manual");
           prevItem._height = prevItem._originalHeight - this.currentlyDraggedComponent.get('height');
@@ -1203,7 +1203,7 @@ COPY:
         //shrink the drop target,
         //which has a child model, and is the parent of the dragged object
         //(item.swapFromFolder === false && item._height === item._originalHeight) &&
-        if (item.swapFromFolder === false && item._height === item._originalHeight && item === this.currentlyDraggedComponent.get('parent'))
+        if (item.swapFromFolder === false && item._height === item._originalHeight)
         {
 
           item._height = item._originalHeight - this.currentlyDraggedComponent.get('height');
@@ -1436,9 +1436,9 @@ COPY:
     }
 
     //reset dragging back into folder for child items
-    if(this.swapDropTarget === false && item.swapFromFolder === true)
+    if(this.swapDropTarget === false && item.swapFromFolder === true && item === this.currentlyDraggedComponent.get('parent'))
     {
-      console.log("ADJUST: 3 resetting height");
+      console.log("ADJUST: 3 resetting height for="+item.elementId);
       //item._height = item._originalHeight;
       //$(item.element).css('height', 'auto');
       item.changeHeight("auto");
