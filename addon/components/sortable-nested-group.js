@@ -1198,6 +1198,7 @@ COPY:
           item.isChangingHeight = true;
           //item._height = item._originalHeight;
           //$(item.element).css('height', 'auto'); //also removed in commit as well (after drop) because it is a current drop target
+          return true;
         }
 
         //shrink the drop target,
@@ -1223,9 +1224,10 @@ COPY:
             //  height: `${item._height}px`
             //});
           }
+
+          return true;
         }
 
-        return true;
       }
 
 
