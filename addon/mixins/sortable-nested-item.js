@@ -115,7 +115,10 @@ export default Ember.Mixin.create(SortableItemMixin, {
           $(this.element).css('top', ''); //remove top
           $(this.element).height(); // Force-apply styles
 
-          console.log(" !!! reseting="+item.elementId);
+          console.log(" !!! reseting="+this.elementId);
+
+          //get the new top value
+          top = (  isNaN( parseFloat($(this.element).css('top')) ) === true ? 0 : parseFloat($(this.element).css('top')) );
       }
 
       //prevent folder from being changed twice. eg. currentTop= -33 and value =-33, would result in -66, which is wrong!
