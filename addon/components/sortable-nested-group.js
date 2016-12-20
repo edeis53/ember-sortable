@@ -931,7 +931,7 @@ COPY:
        if(this.currentlyDraggedComponent !== null && this.currentlyDraggedComponent.isDragging === true)
        {
           //update the drop target after completion, because if we've made a space above a folder, while dragging out of the folder, the folder may still be the drop target, but it should get updated to root.
-          //this.dropTarget = this.findDropTarget();
+          this.dropTarget = this.findDropTarget();
 
          //update once more.
          //this.coordinateRecursiveUpdate(sortedItems, position);
