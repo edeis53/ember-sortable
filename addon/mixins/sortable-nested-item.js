@@ -28,6 +28,7 @@ export default Ember.Mixin.create(SortableItemMixin, {
         @default 125
       */
       updateInterval: 250,  //~~~!!!!! IMPORTANT !!!!!! Must be slower than CSS transition!!!
+      //Important. Fixes issue on iPad where it can fight when dragging into a folder (opens/closes on next loop). Only seems to happen when using a rather large menu with lots of items that need DOM to update. Also happens all the time on my slow android device.
 
 
     /**
@@ -952,6 +953,17 @@ export default Ember.Mixin.create(SortableItemMixin, {
     },
 
 
+    //Ensure the parent of the drop target have proper heights after changes to child items.
+    reflowParents() {
+      this.$().css({ transform: '', height: '', 'max-height': '', 'min-height': '', 'top': ''  });
+
+      if(this.parent !== null)
+      {
+        this.get('parent').reflowParents();
+      }
+    },
+
+
     /**
       @method reset
     */
@@ -969,11 +981,24 @@ export default Ember.Mixin.create(SortableItemMixin, {
 
       el.css({ transform: '', height: '', 'max-height': '', 'min-height': '', 'top': ''  }); //reset height here too, revert from defined height (left over from a swap drop) and change to auto.
       el.height(); // Force-apply styles
+    },
+
+
+    /**
+      @method thaw
+    */
+    thaw() {
+      let el = this.$();
+      if (!el) { return; }
+
+      el.css({ transition: '' });
 
       //reset height, now that it is reflowing with auto, grab the values and fix them.
-      this._originalHeight = this._height = $(this.element).outerHeight();
-      $(this.element).css('max-height', this._height);
-      $(this.element).css('min-height', this._height);
+      this._originalHeight = this._height = el.outerHeight();
+      el.css('max-height', this._height);
+      el.css('min-height', this._height);
+
+      el.height(); // Force-apply styles
     },
 
 

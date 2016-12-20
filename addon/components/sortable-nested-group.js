@@ -931,7 +931,7 @@ COPY:
        if(this.currentlyDraggedComponent !== null && this.currentlyDraggedComponent.isDragging === true)
        {
           //update the drop target after completion, because if we've made a space above a folder, while dragging out of the folder, the folder may still be the drop target, but it should get updated to root.
-          this.dropTarget = this.findDropTarget();
+          //this.dropTarget = this.findDropTarget();
 
          //update once more.
          //this.coordinateRecursiveUpdate(sortedItems, position);
@@ -1133,9 +1133,12 @@ COPY:
 
 
       //handle exiting DropTargets
-      let adjustment = 5; //exit the drop target a little early !!! Important. Fixes issue on iPad where it can fight when dragging into a folder (opens/closes on next loop). Only seems to happen when using a rather large menu with lots of items that need DOM to update.
+      let adjustment = 5; //exit the drop target a little early !!!
 
-      console.log("prevItem.isChangingHeight="+prevItem.isChangingHeight+" ")
+      //console.log("prevItem.isChangingHeight="+prevItem.isChangingHeight+" ")
+
+              console.log("PARENTSHRINK: prevItem.swapFromFolder="+prevItem.swapFromFolder+" heightsSame?="+(prevItem._height === prevItem._originalHeight ? true : false)+" prevItem="+prevItem.elementId+" this.currentlyDraggedComponent.get('parent')="+this.currentlyDraggedComponent.get('parent.elementId')+" prevItem.activeDropTarget ="+prevItem.activeDropTarget)
+
       //drag out of bottom of drop target (exiting)
       //don't shrink the folder, if it now has a child that is a drop target. In this case, this folder is already the correct size
       if(prevItem && prevItem.isChangingHeight === false && prevItem.activeDropTarget === true && (draggedBottomEdge + adjustment) > prevItem.get('bottomEdge') && this.hasChild(prevItem, 'activeDropTarget', '===', true) === 0)
@@ -1645,7 +1648,7 @@ COPY:
     }
 
         if((this.swapDropTarget === true && item.swapFromFolder === true && (item._height !== item._originalHeight || this.hasChild(item, 'activeDropTarget', '===', true) > 0))){
-          console.log("TYING THIS");
+          //console.log("TYING THIS");
           //position = position - this.currentlyDraggedComponent.get('swappedDestinationHeight');
         }
 
@@ -2099,8 +2102,6 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
 
 
 
-
-
         console.log("current mouse position = "+this.get('currentMousePosition').y);
 
         //default this._y = this.element.offsetTop;
@@ -2141,7 +2142,7 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     $(this.dropTarget.get('element')).removeClass('sortable-activeDropTarget');
 
     //$(this.dropTarget.get('element')).css('height', 'auto'); //remove any height resizing
-    this.dropTarget = null;
+
     this.swapDropTarget = false;
     this.set('currentlyDraggedComponent', null);
 
@@ -2162,6 +2163,15 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     **/
 
 
+    //Force parents of the drop target to reflow their heights
+    if(this.dropTarget !== this)
+    {
+      //if drop target isnt' root.
+      this.dropTarget.reflowParents(); //Ensure the parents have proper heights after changes to child items.
+    }
+
+    this.dropTarget = null;
+
     //run sortable-item.freeze();
     //set css transition to none.
     run.schedule('render', () => {
@@ -2175,6 +2185,7 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     });
 
     //removes transform again.
+    //restablished max-height and min-height on the items.
     run.next(() => {
       run.schedule('render', () => {
         this.recursiveInvoke(items, 'thaw');
@@ -2186,7 +2197,10 @@ if(this.swapDropTarget === true && itemParent.activeDropTarget === true && isNaN
     } else {
       invokeAction(this, 'onChange', itemModels, draggedModel);
     }
+
   }
+
+
 
 
 
