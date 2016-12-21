@@ -1633,34 +1633,6 @@ COPY:
 
 
 
-    //if this item is the current drop target, and we've adjusted it's height, remove the corresponding amount from position, because they space has already been inserted into the drop target
-    //or if this item has a child that is an active drop target
-    //console.log("SECOND CATCH:: this.swapDropTarget ="+this.swapDropTarget+" item.swapFromFolder="+item.swapFromFolder+" haschild="+this.hasChild(item, 'activeDropTarget', '===', true)+" itemHeightVsOrig="+(item._height !== item._originalHeight ? true: false));
-    if((this.swapDropTarget === true && item.swapFromFolder === false && (item._height !== item._originalHeight || this.hasChild(item, 'activeDropTarget', '===', true) > 0)))
-    {
-      console.log("DISABLED:: position1: subtracing height of draggedcomponent");
-      //console.log("have child as drop or my height is different");
-      //adjust position of next element. We just added height to the drop target. We must subtract this from position so the next item is rendered in the correct location
-      //position = position - this.currentlyDraggedComponent.get('swappedDestinationHeight');
-    } else if (item.isChangingHeight === true && item._height === item._originalHeight && this.swapDropTarget === false && item.swapFromFolder === false) {
-      //start dragging out of a folder and then return.
-      //folder is shrinking by height of component, we need to adjust position.
-      console.log("SUBTRACTING OT OF FODLER");
-      //position = position - this.currentlyDraggedComponent.get('height');
-    }
-
-        if((this.swapDropTarget === true && item.swapFromFolder === true && (item._height !== item._originalHeight || this.hasChild(item, 'activeDropTarget', '===', true) > 0))){
-          //console.log("TYING THIS");
-          //position = position - this.currentlyDraggedComponent.get('swappedDestinationHeight');
-        }
-
-
-    //if we've shrunk the folder size, we need to increase position to compensate
-    if(item.swapFromFolder === true)
-    {
-      //position = position + this.currentlyDraggedComponent.get('height');
-    }
-
     // add additional spacing around active element
     //eg. 'isBusy' = computed.or('isDragging', 'isDropping'),
     if (get(item, 'isBusy')) {
@@ -1673,52 +1645,12 @@ COPY:
 
 
 
-/*
-    //is this item at the same depth as the dragged item?
-    //eg. are both the dragged item and this item within the drop area?
-    if(itemParent === this.activeDropTargetComponent && !get(item, 'isDragging'))
-    {
-
-
-
-    } else {
-      //update children or other nodes that aren't in the drop area
-
-      //if it is not the element being dragged adjust it's position.
-      //if it is the very first element, then it's position is the same. We just grabbed the position of the first element above with position = this.get('itemPosition');
-      if (!get(item, 'isDragging')) {
-        console.log("else "+index);
-        set(item, direction, position);
-      }
-
-      //if we are iterating over the dragged item, don't adjust the position tree.
-      //we'll adjust it later.
-      if (!get(item, 'isDragging')) {
-        position += get(item, dimension);
-      }
-    }
-
-*/
-
-
-
-
-
-
-
-
-
     /**
       016: Now we are going to iterate to the next sortable-item in the list.
               Next item's position is going to be to relative to the current item.
                 -below get(item, "height")  is constant alias for Ember.get()
                 -sortable-item has a height() computer property.
      **/
-
-
-
-
-
 
 
     return position;
